@@ -5,7 +5,7 @@ body{margin:0;font-family:"Meiryo","Yu Gothic",sans-serif;color:#223;background:
 .page.active{display:block;}
 
 /* ログイン */
-#login{min-height:100vh;display:flex;align-items:center;justify-content:center;}
+#login{min-height:100vh;align-items:center;justify-content:center;}  /* display は .page / .page.active で制御（非activeは display:none） */
 #login.active{display:flex;}
 .login-card{background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);width:320px;text-align:center;}
 .login-card h1{color:var(--blue);font-size:18px;line-height:1.5;margin:0 0 18px;}
