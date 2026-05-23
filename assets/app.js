@@ -169,14 +169,25 @@ function kenshinFor(fac){
   const k=Object.keys(KENSHIN).find(x=>x.replace(/\s|　/g,'')===nf);
   return k?KENSHIN[k]:null;
 }
-// 複数折れ線（健診の内訳：各項目を1本の線で・棒や移動平均なし）
+// 複数折れ線（健診の内訳：各項目を1本の線で・棒や移動平均なし）。
+// 系列の大小が混在する時は小さい系列を第2Y軸(右)に振り分けて潰れを防ぐ。
 const PALETTE=['#0068c4','#e2001a','#5BA640','#f39c12','#8e44ad','#16a085','#d35400','#2c3e50','#c0392b','#2980b9'];
 function buildLineChart(cv, labels, series){
-  const ds=Object.entries(series).map(([name,vals],i)=>({label:name,data:vals,
-    borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
+  const entries=Object.entries(series);
+  const maxes=entries.map(([,v])=>Math.max(0,...v.filter(x=>typeof x==='number')));
+  const gMax=Math.max(1,...maxes), thr=gMax*0.25;
+  const useRight=maxes.some(m=>m<thr) && maxes.some(m=>m>=thr); // 大小混在時のみ2軸
+  const ds=entries.map(([name,vals],i)=>{
+    const small=useRight && maxes[i]<thr;
+    return {label:name+(small?'（右軸）':''),data:vals,yAxisID:small?'y1':'y',
+      borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',
+      borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true,borderDash:small?[4,3]:[]};
+  });
+  const scales={x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},
+    y:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};
+  if(useRight) scales.y1={beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}};
   return new Chart(cv,{type:'line',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
-      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9}}}},
-      scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9}}}}, scales}});
 }
 boot();
