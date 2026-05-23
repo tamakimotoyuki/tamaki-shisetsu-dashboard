@@ -1,5 +1,5 @@
 'use strict';
-let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], chart=null, curFac=null, curDept=null;
+let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], charts=[], curFac=null, curDept=null;
 
 async function sha256(s){
   const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -31,6 +31,13 @@ function findGraph(itemName){
   return null;
 }
 function kijunNum(kijun){ if(!kijun) return null; const m=String(kijun).match(/(\d+\.?\d*)\s*(％|%|日|床|名|人|点|件|単位)?\s*(以上|以下|以内|未満)/); return m?parseFloat(m[1]):null; }
+// 配布資料の部署名 → dashboardの部署キー を対応づける（括弧内の語は残し、床/数字/室/部/センター等は無視）
+function normDept(s){ return String(s).replace(/※.*$/,'').replace(/[（）()\s　]/g,'').replace(/[0-9０-９]+/g,'').replace(/床|病棟|センター|室|部/g,''); }
+function matchGraphDept(haifuDept, graphKeys){
+  const hn=normDept(haifuDept); if(!hn) return null;
+  for(const gk of graphKeys){ const gn=normDept(gk); if(gn && (gn.includes(hn)||hn.includes(gn))) return gk; }
+  return null;
+}
 
 async function enter(){
   if(!HAIFU) HAIFU=await (await fetch('data/haifu.json')).json();
@@ -52,37 +59,62 @@ function selFac(f){
 function selDept(d){
   curDept=d;
   document.querySelectorAll('#dept-tabs button').forEach(b=>b.classList.toggle('active', b.textContent===d));
-  renderTable();
+  renderDept();
 }
-function renderTable(){
+
+function clearCharts(){ charts.forEach(c=>c.destroy()); charts=[]; }
+
+function renderDept(){
   const items=HAIFU[curFac][curDept];
-  const tb=document.querySelector('#metric-table tbody'); tb.innerHTML='';
-  let first=null;
-  items.forEach((it,i)=>{
-    const tr=document.createElement('tr');
+  // 左：配布資料を2列グリッドで（区分なし・基準はタイトル下に小さく）
+  const grid=document.getElementById('metric-grid'); grid.innerHTML='';
+  items.forEach(it=>{
+    const cell=document.createElement('div'); cell.className='mcell';
     const hasG=!!findGraph(it['項目']);
-    tr.innerHTML=`<td>${it['項目']}${hasG?' 📈':''}</td><td class="num">${it['値表示']??'-'}</td><td>${it['単位']||''}</td><td class="kijun">${it['基準']||'—'}</td><td>${it['区分']||''}</td>`;
-    tr.onclick=()=>{ document.querySelectorAll('#metric-table tbody tr').forEach(x=>x.classList.remove('sel')); tr.classList.add('sel'); drawChart(it); };
-    tb.appendChild(tr); if(i===0)first=it;
+    const lab=document.createElement('div'); lab.className='mlab';
+    lab.innerHTML=`<span class="mt">${it['項目']}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'');
+    const val=document.createElement('div'); val.className='mv';
+    val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
+    cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   });
-  if(first){ tb.firstChild.classList.add('sel'); drawChart(first); }
+  document.getElementById('table-title').textContent=`配布資料（${curDept}）`;
+  // 右：この部署のグラフをまとめて縦に並べる（クリック不要）
+  clearCharts();
+  const wrap=document.getElementById('charts'); wrap.innerHTML='';
+  // 基準線用に「グラフ名→配布資料項目」を作る
+  const itemByGraph={};
+  items.forEach(it=>{ const g=findGraph(it['項目']); if(g && !itemByGraph[g.name]) itemByGraph[g.name]=it; });
+  // ①部署キー直引き（dashboardは部署ごとにグラフを束ねている）を優先。
+  //   見つかったらそれが完全集合なのでitem照合は使わない（過剰マッチ防止）。
+  //   直引きが空のときだけ②item照合でフォールバック（アンギオ室・緊急入院・サテライト等）。
+  const found=new Map();
+  const gdepts=GRAPHS[curFac];
+  if(gdepts){ const gk=matchGraphDept(curDept, Object.keys(gdepts)); if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); } }
+  if(!found.size){ items.forEach(it=>{ const g=findGraph(it['項目']); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
+  found.forEach((o,name)=>{
+    const card=document.createElement('div'); card.className='chartcard';
+    const h=document.createElement('h3'); h.textContent=name; card.appendChild(h);
+    const box=document.createElement('div'); box.className='chartbox';
+    const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
+    wrap.appendChild(card);
+    charts.push(buildChart(cv, {name,o}, itemByGraph[name]||{}));
+  });
+  document.getElementById('charts-title').textContent=`グラフ（週次推移）${found.size?`　${found.size}件`:''}`;
+  if(!found.size){ wrap.innerHTML='<p class="nochart">この部署の週次グラフはありません（表の値のみ）。</p>'; }
 }
-function drawChart(it){
-  const g=findGraph(it['項目']);
-  const ctx=document.getElementById('chart');
-  if(chart){ chart.destroy(); chart=null; }
-  const titleEl=document.getElementById('chart-title');
-  if(!g){ titleEl.textContent=`${it['項目']}　（この項目の週次グラフはありません：表の値のみ）`; return; }
+
+function buildChart(cv, g, it){
   const o=g.o, labels=o.series.map(x=>x[0]), vals=o.series.map(x=>x[1]);
   const ma=vals.map((_,i)=>{const s=Math.max(0,i-11),w=vals.slice(s,i+1);return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);});
-  titleEl.textContent=`${g.name} の推移（${vals.length}週）`;
   const ds=[
     {type:'bar',label:'週次',data:vals,order:2,backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
     {type:'line',label:'3か月平均',data:ma,order:1,borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
   ];
   const kn=kijunNum(it['基準']);
   if(kn!=null){ ds.push({type:'line',label:'基準('+it['基準']+')',data:labels.map(()=>kn),order:0,borderColor:'rgba(226,0,26,.5)',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false}); }
-  chart=new Chart(ctx,{type:'bar',data:{labels,datasets:ds},
-    options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true}},scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true}},y:{beginAtZero:true}}}});
+  return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
+      scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
 }
 boot();
