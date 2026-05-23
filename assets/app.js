@@ -62,7 +62,8 @@ function renderSection(s){
   Object.keys(metrics).forEach((m,i)=>{
     const o=metrics[m];
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${m}</td><td class="num">${o['最新']??'-'}</td><td>${o['単位']}</td><td>${o['週数']}</td>`;
+    const kijun=o['基準']?o['基準']['表示']:'—';
+    tr.innerHTML=`<td>${m}</td><td class="num">${o['最新']??'-'}</td><td>${o['単位']}</td><td class="kijun">${kijun}</td><td>${o['週数']}</td>`;
     tr.onclick=()=>{ document.querySelectorAll('#metric-table tbody tr').forEach(x=>x.classList.remove('sel')); tr.classList.add('sel'); drawChart(s,m); };
     tbody.appendChild(tr);
     if(i===0) first=m;
@@ -79,14 +80,18 @@ function drawChart(s,m){
   const unit=o['単位']?`(${o['単位']})`:'';
   const ctx=document.getElementById('chart');
   if(chart) chart.destroy();
-  // 元グラフ準拠：週次の実数=棒グラフ(青) ＋ 12週移動平均=赤の折れ線。レスポンシブ
-  chart=new Chart(ctx,{type:'bar',
-    data:{labels,datasets:[
-      {type:'bar',label:m+unit,data:vals,order:2,
-        backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
-      {type:'line',label:'3か月平均',data:ma,order:1,
-        borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
-    ]},
+  // 元グラフ準拠：週次の実数=棒(青) ＋ 3か月平均=赤線。基準があれば薄い赤の点線で水平基準線
+  const datasets=[
+    {type:'bar',label:m+unit,data:vals,order:2,
+      backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
+    {type:'line',label:'3か月平均',data:ma,order:1,
+      borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
+  ];
+  if(o['基準'] && typeof o['基準']['値']==='number'){
+    datasets.push({type:'line',label:'基準('+o['基準']['表示']+')',data:labels.map(()=>o['基準']['値']),order:0,
+      borderColor:'rgba(226,0,26,.5)',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false});
+  }
+  chart=new Chart(ctx,{type:'bar',data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true}},y:{beginAtZero:true}}}});
 }

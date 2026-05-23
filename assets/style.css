@@ -30,6 +30,7 @@ table{border-collapse:collapse;width:100%;font-size:14px;}
 th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;}
 th{color:#667;font-size:12px;}
 td.num{text-align:right;font-weight:bold;}
+td.kijun{color:#a33;font-size:12px;white-space:nowrap;}
 tbody tr{cursor:pointer;}
 tbody tr:hover{background:#f1f7ff;}
 tbody tr.sel{background:#e3f0ff;}
