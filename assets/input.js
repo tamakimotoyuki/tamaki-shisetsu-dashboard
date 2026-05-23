@@ -1,5 +1,7 @@
 'use strict';
 let AUTH=null, SCHEMA=null, curFac=null, curDept=null;
+// GAS Web App の /exec URL（デプロイ後に設定）。空なら「サーバー保存」は書き出しを案内。
+const SAVE_ENDPOINT='';
 
 async function sha256(s){
   const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -44,6 +46,7 @@ async function boot(){
   document.getElementById('save').addEventListener('click', ()=>{ persistForm(); flash('保存しました'); buildDeptTabs(); });
   document.getElementById('export').addEventListener('click', exportDept);
   document.getElementById('export-all').addEventListener('click', exportAll);
+  document.getElementById('send').addEventListener('click', sendToServer);
   if(sessionStorage.getItem('ok')==='1') await enter();
 }
 async function onLogin(e){
@@ -157,5 +160,16 @@ function exportAll(){
   persistForm();
   download(`全体会議入力_${curWeek()}.json`, {week:curWeek(),data:loadStore()});
   flash('入力済み全部署を書き出しました');
+}
+async function sendToServer(){
+  persistForm();
+  if(!SAVE_ENDPOINT){ alert('サーバー保存先が未設定です。当面は「書き出す」でJSONを保存して送ってください。'); return; }
+  const payload={week:curWeek(), data:loadStore()};
+  try{
+    // GASのCORSプリフライト回避のため text/plain で送る（GASは postData.contents で受ける）
+    const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    const j=await r.json().catch(()=>({}));
+    flash(j.ok?`サーバーに保存しました（${j.rows||0}行）`:'保存に失敗しました');
+  }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
 }
 boot();
