@@ -36,12 +36,10 @@ async function enter(){
   if(!DATA) DATA=await (await fetch('data/dashboard.json')).json();
   show('dash');
   const secs=Object.keys(DATA['セクション']);
-  // 最新週ラベル
+  // 最新期間ラベル（series末尾から）
   let latest='';
-  for(const s of secs) for(const m in DATA['セクション'][s]){
-    const w=DATA['セクション'][s][m]['最新週']; if(w&&w>latest) latest=w;
-  }
-  document.getElementById('week-label').textContent='最新週: '+latest;
+  for(const s of secs){ for(const m in DATA['セクション'][s]){ const ser=DATA['セクション'][s][m].series; if(ser&&ser.length){ latest=ser[ser.length-1][0]; break; } } if(latest) break; }
+  document.getElementById('week-label').textContent='最新: '+latest;
   // タブ
   const tabs=document.getElementById('section-tabs'); tabs.innerHTML='';
   secs.forEach((s,i)=>{
