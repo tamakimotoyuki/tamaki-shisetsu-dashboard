@@ -6,6 +6,15 @@ async function sha256(s){
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 function show(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+// タブ表示名を短く（データキーは変えない）
+const SHORT={
+  '藍住 たまき青空クリニック':'藍住クリニック','ハート徳島クリニック（別法人・メディエンス）':'ハート徳島クリニック',
+  '特養あおぞら（①②③いずれか該当）':'特養あおぞら','たまき青空 居宅支援':'居宅支援',
+  '藍住たまき青空 居宅支援':'藍住居宅支援','たまき青空 訪問看護':'訪問看護',
+  '一般病棟（地域包括ケア）':'地域包括ケア','地域包括医療 (60床) ※毎月10日以降':'地域包括医療',
+  '透析室（本館）':'透析室 本館','透析室（健診センター）':'透析室 健診','リハビリ（病院）':'リハビリ'
+};
+function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/※.*$/,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
 
 /* ---- 対象週（月曜）---- */
 function fmtLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -47,12 +56,12 @@ async function enter(){
   if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json')).json();
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
-  Object.keys(SCHEMA).forEach((f,i)=>{ const b=document.createElement('button'); b.textContent=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
+  Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
   selFac(Object.keys(SCHEMA)[0]);
 }
 function selFac(f){
   curFac=f;
-  document.querySelectorAll('#fac-tabs button').forEach(b=>b.classList.toggle('active', b.textContent===f));
+  document.querySelectorAll('#fac-tabs button').forEach(b=>b.classList.toggle('active', b.dataset.key===f));
   buildDeptTabs();
   selDept(Object.keys(SCHEMA[f])[0]);
 }
@@ -60,7 +69,7 @@ function buildDeptTabs(){
   const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
   Object.keys(SCHEMA[curFac]).forEach(d=>{
     const b=document.createElement('button');
-    b.textContent=d+(deptHasInput(curFac,d)?' ✓':'');
+    b.textContent=shortLabel(d)+(deptHasInput(curFac,d)?' ✓':'');
     b.dataset.dept=d;
     b.onclick=()=>selDept(d); dt.appendChild(b);
     if(d===curDept) b.classList.add('active');
