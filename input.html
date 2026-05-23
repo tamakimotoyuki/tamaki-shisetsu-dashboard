@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>全体会議 入力</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ログインゲート -->
+<section id="login" class="page active">
+  <form id="login-form" class="login-card">
+    <h1>全体会議 入力フォーム</h1>
+    <label>ID<input id="uid" autocomplete="username" required></label>
+    <label>パスワード<input id="upw" type="password" autocomplete="current-password" required></label>
+    <button type="submit">ログイン</button>
+    <p id="login-err" class="err"></p>
+  </form>
+</section>
+
+<!-- 入力画面 -->
+<section id="app" class="page">
+  <header class="topbar">
+    <span class="brand">全体会議 入力</span>
+    <a class="link" href="index.html" style="text-decoration:none">📊 結果表示へ</a>
+    <button id="logout" class="link">ログアウト</button>
+  </header>
+
+  <div class="toolbar">
+    <label>対象の週（月曜）<input id="week" type="date"></label>
+    <span id="saved-note" class="saved-note"></span>
+    <span class="spacer"></span>
+    <button id="save" class="btn green">一時保存</button>
+    <button id="export" class="btn">この部署を書き出す</button>
+    <button id="export-all" class="btn ghost">入力済み全部署を書き出す</button>
+  </div>
+
+  <nav id="fac-tabs" class="tabs"></nav>
+  <nav id="dept-tabs" class="tabs sub"></nav>
+
+  <div class="formwrap">
+    <p style="font-size:13px;color:#667">数字は「先週1週間の実測」を入れてください。下の「自動で入る項目」は入力不要です（システムが計算・過去データ・台帳から出します）。<br>
+    すでにエクセル・ワードで記録している場合は、入力せずそのファイルを送ってください。</p>
+    <div id="form"></div>
+  </div>
+</section>
+
+<script src="assets/input.js"></script>
+</body>
+</html>

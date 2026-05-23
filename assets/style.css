@@ -40,6 +40,30 @@ tbody tr.sel{background:#e3f0ff;}
 .chartbox{position:relative;height:360px;width:100%;}
 .chartbox canvas{position:absolute;inset:0;}
 
+/* 入力アプリ */
+.toolbar{display:flex;gap:10px;align-items:center;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+.toolbar label{font-size:13px;color:#445;}
+.toolbar input[type=date]{padding:6px 8px;border:1px solid var(--line);border-radius:7px;font-size:14px;}
+.toolbar .spacer{margin-left:auto;}
+.btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;}
+.btn.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue);}
+.btn.green{background:var(--green);}
+.formwrap{padding:16px;max-width:880px;margin:0 auto;}
+.sec-h{font-size:14px;color:var(--blue);margin:18px 0 8px;border-left:4px solid var(--green);padding-left:8px;}
+.sec-h.auto{color:#889;border-left-color:#ccc;}
+.inp-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-bottom:1px solid var(--line);}
+.inp-row .lbl{flex:1 1 auto;font-size:14px;}
+.inp-row .kij{color:#a33;font-size:11px;margin-left:6px;white-space:nowrap;}
+.inp-row input[type=number]{width:120px;padding:7px;border:1px solid var(--line);border-radius:7px;font-size:15px;text-align:right;}
+.inp-row .unit{width:46px;font-size:12px;color:#667;}
+.auto-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-bottom:1px dashed var(--line);color:#99a;background:#f7f9fb;}
+.auto-row .lbl{flex:1 1 auto;font-size:13px;}
+.badge{font-size:11px;background:#eef;color:#668;border:1px solid #dde;border-radius:10px;padding:2px 8px;white-space:nowrap;}
+.datelist{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.datelist .chip{background:#e3f0ff;border:1px solid #bcd;border-radius:12px;padding:2px 8px;font-size:12px;cursor:pointer;}
+.saved-note{font-size:12px;color:var(--green);margin-left:8px;}
+.dept-done{color:var(--green);font-weight:bold;}
+
 /* レスポンシブ：スマホ・タブレット */
 @media (max-width:820px){
   .split{flex-direction:column;}
