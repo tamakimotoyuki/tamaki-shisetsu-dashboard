@@ -1,5 +1,5 @@
 'use strict';
-let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], charts=[], curFac=null, curDept=null;
+let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], charts=[], curFac=null, curDept=null, KENSHIN=null;
 
 async function sha256(s){
   const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -67,6 +67,7 @@ function matchGraphDept(haifuDept, graphKeys){
 async function enter(){
   if(!HAIFU) HAIFU=await (await fetch('data/haifu.json')).json();
   if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json')).json())['施設']; buildGraphIndex(); }
+  if(!KENSHIN){ try{ KENSHIN=(await (await fetch('data/kenshin_series.json')).json())['施設']||{}; }catch(e){ KENSHIN={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -119,6 +120,20 @@ function renderDept(){
     if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); }
   }
   if(!found.size){ items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
+  // 健診の部署では「内訳の複数折れ線（項目別・週次）」を先頭に追加
+  let extra=0;
+  if(/健診/.test(curDept)){
+    const kf=kenshinFor(curFac);
+    if(kf && kf['系列']){
+      const card=document.createElement('div'); card.className='chartcard';
+      const h=document.createElement('h3'); h.textContent='健診の内訳（項目別・週次）'; card.appendChild(h);
+      const box=document.createElement('div'); box.className='chartbox'; box.style.height='320px';
+      const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
+      wrap.appendChild(card);
+      charts.push(buildLineChart(cv, kf['週ラベル'], kf['系列']));
+      extra++;
+    }
+  }
   found.forEach((o,name)=>{
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=name; card.appendChild(h);
@@ -127,8 +142,9 @@ function renderDept(){
     wrap.appendChild(card);
     charts.push(buildChart(cv, {name,o}, itemByGraph[name]||{}));
   });
-  document.getElementById('charts-title').textContent=`グラフ（週次推移）${found.size?`　${found.size}件`:''}`;
-  if(!found.size){ wrap.innerHTML='<p class="nochart">この部署の週次グラフはありません（表の値のみ）。</p>'; }
+  const total=found.size+extra;
+  document.getElementById('charts-title').textContent=`グラフ（週次推移）${total?`　${total}件`:''}`;
+  if(!total){ wrap.innerHTML='<p class="nochart">この部署の週次グラフはありません（表の値のみ）。</p>'; }
 }
 
 function buildChart(cv, g, it){
@@ -143,6 +159,24 @@ function buildChart(cv, g, it){
   return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
+      scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
+}
+// 健診データの施設キー解決（空白の有無を吸収）
+function kenshinFor(fac){
+  if(!KENSHIN) return null;
+  if(KENSHIN[fac]) return KENSHIN[fac];
+  const nf=fac.replace(/\s|　/g,'');
+  const k=Object.keys(KENSHIN).find(x=>x.replace(/\s|　/g,'')===nf);
+  return k?KENSHIN[k]:null;
+}
+// 複数折れ線（健診の内訳：各項目を1本の線で・棒や移動平均なし）
+const PALETTE=['#0068c4','#e2001a','#5BA640','#f39c12','#8e44ad','#16a085','#d35400','#2c3e50','#c0392b','#2980b9'];
+function buildLineChart(cv, labels, series){
+  const ds=Object.entries(series).map(([name,vals],i)=>({label:name,data:vals,
+    borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true}));
+  return new Chart(cv,{type:'line',data:{labels,datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:9}}}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
 }
 boot();
