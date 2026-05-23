@@ -41,7 +41,8 @@ tbody tr.sel{background:#e3f0ff;}
 .chartbox canvas{position:absolute;inset:0;}
 
 /* 配布資料：左ペイン2列グリッド（区分なし・基準はタイトル下に小さく） */
-.left{flex:1 1 520px;min-width:360px;}
+/* スクロール時も配布資料が見えるよう左ペインを固定（追従）。スマホでは無効化 */
+.left{flex:1 1 520px;min-width:360px;position:sticky;top:8px;align-self:flex-start;max-height:calc(100vh - 16px);overflow:auto;}
 .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;}
 .mcell{display:flex;justify-content:space-between;gap:8px;align-items:baseline;border-bottom:1px solid var(--line);padding:4px 2px;}
 .mlab{min-width:0;}
@@ -83,6 +84,7 @@ tbody tr.sel{background:#e3f0ff;}
 @media (max-width:820px){
   .split{flex-direction:column;}
   .left,.right{flex:1 1 100%;min-width:0;width:100%;}
+  .left{position:static;max-height:none;overflow:visible;}  /* スマホは固定解除（グラフを広く） */
   .mgrid{grid-template-columns:1fr;}
   .chartbox{height:300px;}
   .charts .chartbox{height:240px;}

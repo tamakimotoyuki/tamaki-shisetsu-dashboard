@@ -25,10 +25,25 @@ const SHORT={
   '藍住 たまき青空クリニック':'藍住クリニック','ハート徳島クリニック（別法人・メディエンス）':'ハート徳島クリニック',
   '特養あおぞら（①②③いずれか該当）':'特養あおぞら','たまき青空 居宅支援':'居宅支援',
   '藍住たまき青空 居宅支援':'藍住居宅支援','たまき青空 訪問看護':'訪問看護',
-  '一般病棟（地域包括ケア）':'地域包括ケア','地域包括医療 (60床) ※毎月10日以降':'地域包括医療',
+  '一般病棟（地域包括ケア）':'地域包括ケア','地域包括医療 (60床) ※毎月10日以降':'地域包括医療 ※毎月10日以降',
   '透析室（本館）':'透析室 本館','透析室（健診センター）':'透析室 健診','リハビリ（病院）':'リハビリ'
 };
-function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/※.*$/,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
+function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
+// 病院の部署→dashboardのグラフ部署キー（確定マッピング・誤施設マッチ防止）
+const GRAPH_HINT={
+  '一般病棟（地域包括ケア）':'地域包括ケア病棟','地域包括医療 (60床) ※毎月10日以降':'病棟全体','療養病棟':'療養病棟',
+  '緊急入院':'入退院・救急','入退院報告':'入退院・救急','手術室':'手術室','アンギオ室':'手術室',
+  '透析室（本館）':'透析室','透析室（健診センター）':'透析室','放射線':'放射線部','健診':'健診センター',
+  '検査':'検査部','薬剤':'薬剤部','栄養':'栄養部','リハビリ（病院）':'リハビリ部','訪問リハビリ':'リハビリ部',
+  'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来'
+};
+// 施設内に限定してグラフを探す（全施設横断で別施設のグラフを拾わないため）
+function findGraphInFac(itemName, fac){
+  const gd=GRAPHS[fac]; if(!gd) return null;
+  const n=norm(itemName).replace(/除透析|今月|当月|先月|前月|のべ/g,''); if(n.length<3) return null;
+  for(const d in gd) for(const m in gd[d]){ const gn=norm(m).replace(/名週|件週|名月|件月|週|月|除透析|のべ/g,''); if(gn && (gn.includes(n)||n.includes(gn))) return {name:m,o:gd[d][m]}; }
+  return null;
+}
 function buildGraphIndex(){
   GIDX=[];
   for(const f in GRAPHS) for(const d in GRAPHS[f]) for(const m in GRAPHS[f][d]) GIDX.push({name:m, o:GRAPHS[f][d][m]});
@@ -79,7 +94,7 @@ function renderDept(){
   const grid=document.getElementById('metric-grid'); grid.innerHTML='';
   items.forEach(it=>{
     const cell=document.createElement('div'); cell.className='mcell';
-    const hasG=!!findGraph(it['項目']);
+    const hasG=!!findGraphInFac(it['項目'], curFac);
     const lab=document.createElement('div'); lab.className='mlab';
     lab.innerHTML=`<span class="mt">${it['項目']}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'');
     const val=document.createElement('div'); val.className='mv';
@@ -90,16 +105,19 @@ function renderDept(){
   // 右：この部署のグラフをまとめて縦に並べる（クリック不要）
   clearCharts();
   const wrap=document.getElementById('charts'); wrap.innerHTML='';
-  // 基準線用に「グラフ名→配布資料項目」を作る
+  // 基準線用に「グラフ名→配布資料項目」を作る（施設内に限定）
   const itemByGraph={};
-  items.forEach(it=>{ const g=findGraph(it['項目']); if(g && !itemByGraph[g.name]) itemByGraph[g.name]=it; });
-  // ①部署キー直引き（dashboardは部署ごとにグラフを束ねている）を優先。
-  //   見つかったらそれが完全集合なのでitem照合は使わない（過剰マッチ防止）。
-  //   直引きが空のときだけ②item照合でフォールバック（アンギオ室・緊急入院・サテライト等）。
+  items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !itemByGraph[g.name]) itemByGraph[g.name]=it; });
+  // ①部署キー直引き（dashboardは部署ごとにグラフを束ねている）。グラフのタイトルに部署名が入っているので
+  //   GRAPH_HINTで確定対応→無ければ正規化照合。見つかればそれが完全集合（item照合はしない＝過剰/誤施設防止）。
+  //   直引きが空のときだけ②同一施設内のitem照合でフォールバック。
   const found=new Map();
   const gdepts=GRAPHS[curFac];
-  if(gdepts){ const gk=matchGraphDept(curDept, Object.keys(gdepts)); if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); } }
-  if(!found.size){ items.forEach(it=>{ const g=findGraph(it['項目']); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
+  if(gdepts){
+    let gk=(GRAPH_HINT[curDept] && gdepts[GRAPH_HINT[curDept]]) ? GRAPH_HINT[curDept] : matchGraphDept(curDept, Object.keys(gdepts));
+    if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); }
+  }
+  if(!found.size){ items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
   found.forEach((o,name)=>{
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=name; card.appendChild(h);
