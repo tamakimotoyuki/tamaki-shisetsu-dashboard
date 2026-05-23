@@ -1,5 +1,5 @@
 'use strict';
-let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], charts=[], curFac=null, curDept=null, KENSHIN=null;
+let AUTH=null, HAIFU=null, GRAPHS=null, GIDX=[], charts=[], curFac=null, curDept=null, MULTILINE=null;
 
 async function sha256(s){
   const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -67,7 +67,7 @@ function matchGraphDept(haifuDept, graphKeys){
 async function enter(){
   if(!HAIFU) HAIFU=await (await fetch('data/haifu.json')).json();
   if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json')).json())['施設']; buildGraphIndex(); }
-  if(!KENSHIN){ try{ KENSHIN=(await (await fetch('data/kenshin_series.json')).json())['施設']||{}; }catch(e){ KENSHIN={}; } }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -120,21 +120,20 @@ function renderDept(){
     if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); }
   }
   if(!found.size){ items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
-  // 健診の部署では「内訳の複数折れ線（項目別・週次）」を先頭に追加
-  let extra=0;
-  if(/健診/.test(curDept)){
-    const kf=kenshinFor(curFac);
-    if(kf && kf['系列']){
-      const card=document.createElement('div'); card.className='chartcard';
-      const h=document.createElement('h3'); h.textContent='健診の内訳（項目別・週次）'; card.appendChild(h);
-      const box=document.createElement('div'); box.className='chartbox'; box.style.height='320px';
-      const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
-      wrap.appendChild(card);
-      charts.push(buildLineChart(cv, kf['週ラベル'], kf['系列']));
-      extra++;
-    }
-  }
+  // 複数折れ線グループ（健診の内訳・部屋別手術件数 等）を先頭に追加
+  let extra=0; const mlTitles=new Set();
+  multilineFor(curFac, curDept).forEach(g=>{
+    if(!g['系列']) return;
+    const card=document.createElement('div'); card.className='chartcard';
+    const h=document.createElement('h3'); h.textContent=g.title; card.appendChild(h);
+    const box=document.createElement('div'); box.className='chartbox'; box.style.height='320px';
+    const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
+    wrap.appendChild(card);
+    charts.push(buildLineChart(cv, g['週ラベル'], g['系列']));
+    extra++; mlTitles.add(norm(g.title));
+  });
   found.forEach((o,name)=>{
+    if(mlTitles.has(norm(name))) return; // 複数折れ線で表示済みの単系列はスキップ（部屋別手術件数など）
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=name; card.appendChild(h);
     const box=document.createElement('div'); box.className='chartbox';
@@ -161,13 +160,12 @@ function buildChart(cv, g, it){
       plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
 }
-// 健診データの施設キー解決（空白の有無を吸収）
-function kenshinFor(fac){
-  if(!KENSHIN) return null;
-  if(KENSHIN[fac]) return KENSHIN[fac];
-  const nf=fac.replace(/\s|　/g,'');
-  const k=Object.keys(KENSHIN).find(x=>x.replace(/\s|　/g,'')===nf);
-  return k?KENSHIN[k]:null;
+// 複数折れ線グループの解決（施設キーの空白差を吸収）→ [{title,週ラベル,系列}, ...]
+function multilineFor(fac, dep){
+  if(!MULTILINE) return [];
+  let facObj=MULTILINE[fac];
+  if(!facObj){ const nf=fac.replace(/\s|　/g,''); const k=Object.keys(MULTILINE).find(x=>x.replace(/\s|　/g,'')===nf); facObj=k?MULTILINE[k]:null; }
+  return (facObj && facObj[dep]) ? facObj[dep] : [];
 }
 // 複数折れ線（健診の内訳：各項目を1本の線で・棒や移動平均なし）。
 // 系列の大小が混在する時は小さい系列を第2Y軸(右)に振り分けて潰れを防ぐ。
