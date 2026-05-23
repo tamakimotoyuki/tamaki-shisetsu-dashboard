@@ -32,49 +32,72 @@ function show(id){
   document.getElementById(id).classList.add('active');
 }
 
+let curFac=null, curDept=null;
+
 async function enter(){
   if(!DATA) DATA=await (await fetch('data/dashboard.json')).json();
   show('dash');
-  const secs=Object.keys(DATA['セクション']);
-  // 最新期間ラベル（series末尾から）
+  const facs=Object.keys(DATA['施設']);
+  // 最新期間ラベル
   let latest='';
-  for(const s of secs){ for(const m in DATA['セクション'][s]){ const ser=DATA['セクション'][s][m].series; if(ser&&ser.length){ latest=ser[ser.length-1][0]; break; } } if(latest) break; }
+  outer: for(const f of facs) for(const d in DATA['施設'][f]) for(const m in DATA['施設'][f][d]){
+    const ser=DATA['施設'][f][d][m].series; if(ser&&ser.length){ latest=ser[ser.length-1][0]; break outer; }
+  }
   document.getElementById('week-label').textContent='最新: '+latest;
-  // タブ
-  const tabs=document.getElementById('section-tabs'); tabs.innerHTML='';
-  secs.forEach((s,i)=>{
-    const b=document.createElement('button'); b.textContent=s;
-    b.onclick=()=>selectSection(s,b); tabs.appendChild(b);
-    if(i===0){ b.classList.add('active'); curSection=s; }
+  // 第一ヘッダー：施設タブ
+  const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
+  facs.forEach((f,i)=>{
+    const b=document.createElement('button'); b.textContent=f;
+    b.onclick=()=>selFac(f); ft.appendChild(b);
+    if(i===0) b.classList.add('active');
   });
-  renderSection(secs[0]);
+  selFac(facs[0]);
 }
 
-function selectSection(s,btn){
-  document.querySelectorAll('#section-tabs button').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); curSection=s; renderSection(s);
+function selFac(f){
+  curFac=f;
+  document.querySelectorAll('#fac-tabs button').forEach(b=>b.classList.toggle('active', b.textContent===f));
+  // 第二ヘッダー：部署タブ
+  const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
+  const depts=Object.keys(DATA['施設'][f]);
+  depts.forEach((d,i)=>{
+    const b=document.createElement('button'); b.textContent=d;
+    b.onclick=()=>selDept(d); dt.appendChild(b);
+    if(i===0) b.classList.add('active');
+  });
+  selDept(depts[0]);
 }
 
-function renderSection(s){
+function selDept(d){
+  curDept=d;
+  document.querySelectorAll('#dept-tabs button').forEach(b=>b.classList.toggle('active', b.textContent===d));
+  renderTable();
+}
+
+function shortName(m){
+  return m.replace(/（[^）]*?\/(週|月|人\/日|日\/1人)[^）]*）/g,'').replace(/（[^）]*）\s*$/,'').replace(/\s+/g,' ').trim();
+}
+
+function renderTable(){
   const tbody=document.querySelector('#metric-table tbody'); tbody.innerHTML='';
-  const metrics=DATA['セクション'][s];
+  const metrics=DATA['施設'][curFac][curDept];
   let first=null;
   Object.keys(metrics).forEach((m,i)=>{
     const o=metrics[m];
     const tr=document.createElement('tr');
     const kijun=o['基準']?o['基準']['表示']:'—';
-    tr.innerHTML=`<td>${m}</td><td class="num">${o['最新']??'-'}</td><td>${o['単位']}</td><td class="kijun">${kijun}</td><td>${o['週数']}</td>`;
-    tr.onclick=()=>{ document.querySelectorAll('#metric-table tbody tr').forEach(x=>x.classList.remove('sel')); tr.classList.add('sel'); drawChart(s,m); };
+    tr.innerHTML=`<td>${shortName(m)}</td><td class="num">${o['最新']??'-'}</td><td>${o['単位']}</td><td class="kijun">${kijun}</td><td>${o['週数']}</td>`;
+    tr.onclick=()=>{ document.querySelectorAll('#metric-table tbody tr').forEach(x=>x.classList.remove('sel')); tr.classList.add('sel'); drawChart(m); };
     tbody.appendChild(tr);
     if(i===0) first=m;
   });
-  if(first){ tbody.firstChild.classList.add('sel'); drawChart(s,first); }
+  if(first){ tbody.firstChild.classList.add('sel'); drawChart(first); }
 }
 
-function drawChart(s,m){
-  const o=DATA['セクション'][s][m];
+function drawChart(m){
+  const o=DATA['施設'][curFac][curDept][m];
   const labels=o.series.map(x=>x[0]); const vals=o.series.map(x=>x[1]);
-  document.getElementById('chart-title').textContent=`${m} の推移（${o.series.length}週）`;
+  document.getElementById('chart-title').textContent=`${shortName(m)} の推移（${o.series.length}週）`;
   // 3か月平均（=12週移動平均・職員向け呼称）の赤折れ線
   const ma=vals.map((_,i)=>{const s=Math.max(0,i-11),w=vals.slice(s,i+1);return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);});
   const unit=o['単位']?`(${o['単位']})`:'';
@@ -82,7 +105,7 @@ function drawChart(s,m){
   if(chart) chart.destroy();
   // 元グラフ準拠：週次の実数=棒(青) ＋ 3か月平均=赤線。基準があれば薄い赤の点線で水平基準線
   const datasets=[
-    {type:'bar',label:m+unit,data:vals,order:2,
+    {type:'bar',label:shortName(m)+unit,data:vals,order:2,
       backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
     {type:'line',label:'3か月平均',data:ma,order:1,
       borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
