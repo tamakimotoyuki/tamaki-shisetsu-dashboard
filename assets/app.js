@@ -76,12 +76,19 @@ function drawChart(s,m){
   const o=DATA['セクション'][s][m];
   const labels=o.series.map(x=>x[0]); const vals=o.series.map(x=>x[1]);
   document.getElementById('chart-title').textContent=`${m} の推移（${o.series.length}週）`;
+  // 12週移動平均（赤折れ線）
+  const ma=vals.map((_,i)=>{const s=Math.max(0,i-11),w=vals.slice(s,i+1);return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);});
+  const unit=o['単位']?`(${o['単位']})`:'';
   const ctx=document.getElementById('chart');
   if(chart) chart.destroy();
-  // レスポンシブ：親(.chartbox)の固定高に合わせて幅は自動追従（画面サイズで伸縮）
-  chart=new Chart(ctx,{type:'line',
-    data:{labels,datasets:[{label:m+(o['単位']?`(${o['単位']})`:''),data:vals,
-      borderColor:'#0068c4',backgroundColor:'rgba(0,104,196,.12)',fill:true,tension:.2,pointRadius:labels.length>60?0:2}]},
+  // 元グラフ準拠：週次の実数=棒グラフ(青) ＋ 12週移動平均=赤の折れ線。レスポンシブ
+  chart=new Chart(ctx,{type:'bar',
+    data:{labels,datasets:[
+      {type:'bar',label:m+unit,data:vals,order:2,
+        backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
+      {type:'line',label:'12週移動平均',data:ma,order:1,
+        borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
+    ]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true}},y:{beginAtZero:true}}}});
 }
