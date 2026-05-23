@@ -1,7 +1,7 @@
 'use strict';
 let AUTH=null, SCHEMA=null, curFac=null, curDept=null;
-// GAS Web App の /exec URL（デプロイ後に設定）。空なら「サーバー保存」は書き出しを案内。
-const SAVE_ENDPOINT='';
+// GAS Web App の /exec URL（input_receiver.gs をデプロイしたもの・2026-05-24設定）。
+const SAVE_ENDPOINT='https://script.google.com/macros/s/AKfycbwTUeX5KOi_QIm-c8xgbKvz65FXd6cbhX7ZcNGk5-9mAMeyvLP3rBoFUeS1rRzSiiKCyQ/exec';
 
 async function sha256(s){
   const b=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
