@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>施設連絡会（全体会議）ダッシュボード</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ログインゲート -->
+<section id="login" class="page active">
+  <form id="login-form" class="login-card">
+    <h1>施設連絡会<br>全体会議ダッシュボード</h1>
+    <label>ID<input id="uid" autocomplete="username" required></label>
+    <label>パスワード<input id="upw" type="password" autocomplete="current-password" required></label>
+    <button type="submit">ログイン</button>
+    <p id="login-err" class="err"></p>
+  </form>
+</section>
+
+<!-- ダッシュボード -->
+<section id="dash" class="page">
+  <header class="topbar">
+    <span class="brand">施設連絡会 全体会議</span>
+    <span id="week-label" class="week"></span>
+    <button id="logout" class="link">ログアウト</button>
+  </header>
+  <nav id="section-tabs" class="tabs"></nav>
+  <div class="split">
+    <div class="left">
+      <h2>配布資料（最新週）</h2>
+      <table id="metric-table"><thead><tr><th>項目</th><th>最新値</th><th>単位</th><th>週数</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="right">
+      <h2 id="chart-title">推移</h2>
+      <div class="chartbox"><canvas id="chart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
