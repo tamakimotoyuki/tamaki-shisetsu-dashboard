@@ -74,7 +74,7 @@ function drawChart(s,m){
   const o=DATA['セクション'][s][m];
   const labels=o.series.map(x=>x[0]); const vals=o.series.map(x=>x[1]);
   document.getElementById('chart-title').textContent=`${m} の推移（${o.series.length}週）`;
-  // 12週移動平均（赤折れ線）
+  // 3か月平均（=12週移動平均・職員向け呼称）の赤折れ線
   const ma=vals.map((_,i)=>{const s=Math.max(0,i-11),w=vals.slice(s,i+1);return +(w.reduce((a,b)=>a+b,0)/w.length).toFixed(1);});
   const unit=o['単位']?`(${o['単位']})`:'';
   const ctx=document.getElementById('chart');
@@ -84,7 +84,7 @@ function drawChart(s,m){
     data:{labels,datasets:[
       {type:'bar',label:m+unit,data:vals,order:2,
         backgroundColor:'rgba(0,104,196,.55)',borderColor:'#0068c4',borderWidth:1},
-      {type:'line',label:'12週移動平均',data:ma,order:1,
+      {type:'line',label:'3か月平均',data:ma,order:1,
         borderColor:'#e2001a',backgroundColor:'transparent',borderWidth:2,pointRadius:0,tension:.2}
     ]},
     options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true}},
