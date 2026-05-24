@@ -1,5 +1,5 @@
 'use strict';
-let AUTH=null, SCHEMA=null, curFac=null, curDept=null;
+let AUTH=null, SCHEMA=null, curFac=null, curDept=null, RANGES={};
 // GAS Web App の /exec URL（input_receiver.gs をデプロイしたもの・2026-05-24設定）。
 const SAVE_ENDPOINT='https://script.google.com/macros/s/AKfycbwTUeX5KOi_QIm-c8xgbKvz65FXd6cbhX7ZcNGk5-9mAMeyvLP3rBoFUeS1rRzSiiKCyQ/exec';
 
@@ -53,7 +53,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524l')).json();
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524m')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260524m')).json(); }catch(e){ RANGES={}; }
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -131,9 +132,13 @@ function renderForm(){
     }else{
       const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目']; inp.placeholder='先週の実数';
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
-      inp.addEventListener('change', ()=>{ persistForm(); updateMissingBanner(); });
+      const warn=document.createElement('div'); warn.className='val-warn';
+      const chk=()=>{ warn.textContent=anomalyMsg(it['項目'], inp.value, it['単位']); };
+      inp.addEventListener('change', ()=>{ persistForm(); updateMissingBanner(); chk(); });
+      inp.addEventListener('input', chk);
       row.appendChild(inp);
       const u=document.createElement('span'); u.className='unit'; u.textContent=it['単位']||''; row.appendChild(u);
+      row.appendChild(warn); chk();
     }
     form.appendChild(row);
   });
@@ -167,6 +172,21 @@ function updateMissingBanner(){
   const head=`⚠️ この部署は <b>${miss.length}件</b> の入力が必要です（提出するには全て埋めてください。0でもOK）`;
   const list=miss.slice(0,12).map(m=>`<span class="miss-chip">${m}</span>`).join('')+(miss.length>12?` …ほか${miss.length-12}件`:'');
   el.innerHTML=head+'<div class="miss-list">'+list+'</div>';
+}
+// 異常値チェック（ソフト警告・提出はブロックしない）：負値／％>100／過去実績から大きく外れた値
+function anomalyMsg(item, val, unit){
+  if(val===''||val==null) return '';
+  const v=parseFloat(val); if(isNaN(v)) return '';
+  if(v<0) return '⚠️ 負の値です。入力値を確認してください';
+  if((unit==='％'||unit==='%')&&v>100) return '⚠️ ％が100を超えています。入力値を確認してください';
+  const r=RANGES[curFac+'||'+curDept+'||'+item];
+  if(r){
+    const hi=Math.max((r.max||0)*2,(r.p90||0)*3);
+    const lo=(r.p10>0)?r.p10/5:-1;
+    if(v>hi || (v>0 && lo>0 && v<lo))
+      return `⚠️ 入力値を確認してください（例年 ${r.p10}〜${r.p90} 程度）`;
+  }
+  return '';
 }
 function buildDatelist(it){
   const wrap=document.createElement('div'); wrap.className='datelist'; wrap.dataset.item=it['項目'];

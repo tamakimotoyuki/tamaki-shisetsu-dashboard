@@ -80,7 +80,10 @@ tbody tr.sel{background:#e3f0ff;}
 }
 .sec-h{font-size:14px;color:var(--blue);margin:18px 0 8px;border-left:4px solid var(--green);padding-left:8px;}
 .sec-h.auto{color:#889;border-left-color:#ccc;}
-.inp-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-bottom:1px solid var(--line);}
+.inp-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:7px 8px;border-bottom:1px solid var(--line);}
+/* 異常値のソフト警告（入力値を確認してください） */
+.val-warn{flex-basis:100%;width:100%;color:#a05a00;font-size:11.5px;line-height:1.3;}
+.val-warn:empty{display:none;}
 .inp-row .lbl{flex:1 1 auto;font-size:14px;}
 .inp-row .kij{color:#a33;font-size:11px;margin-left:6px;white-space:nowrap;}
 .inp-row input[type=number]{width:120px;padding:7px;border:1px solid var(--line);border-radius:7px;font-size:15px;text-align:right;}
