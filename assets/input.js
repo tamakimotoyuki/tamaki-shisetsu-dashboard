@@ -47,7 +47,7 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json')).json();
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524g')).json();
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -106,7 +106,7 @@ function renderForm(){
   const items=SCHEMA[curFac][curDept];
   const dd=deptData(curFac,curDept);
   const form=document.getElementById('form'); form.innerHTML='';
-  const inputs=items.filter(x=>x.mode==='input'), autos=items.filter(x=>x.mode==='auto');
+  const inputs=items.filter(x=>x.mode==='input'), notInputs=items.filter(x=>x.mode!=='input');
 
   const h1=document.createElement('div'); h1.className='sec-h'; h1.textContent='① 入力が必要な項目（先週1週間の実数）'; form.appendChild(h1);
   if(!inputs.length){ const p=document.createElement('div'); p.style.cssText='color:#889;font-size:13px;padding:6px'; p.textContent='（この部署は手入力項目がありません）'; form.appendChild(p); }
@@ -127,11 +127,18 @@ function renderForm(){
     form.appendChild(row);
   });
 
-  const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 入力不要（自動で入ります）'; form.appendChild(h2);
-  autos.forEach(it=>{
+  const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 入力不要（自動で入ります／ファイル提出でOK）'; form.appendChild(h2);
+  notInputs.forEach(it=>{
     const row=document.createElement('div'); row.className='auto-row';
     const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=it['項目']; row.appendChild(lbl);
-    const b=document.createElement('span'); b.className='badge'; b.textContent='入力不要（'+(it.reason||'自動')+'）'; row.appendChild(b);
+    const b=document.createElement('span'); b.className='badge';
+    if(it.mode==='file'){
+      b.textContent='📄 入力不要：「'+(it.file||'記録ファイル')+'」を総務・DX推進室に渡してください';
+      b.style.cssText='background:#fff4e5;color:#a05a00;border-color:#f0c890;';
+    }else{
+      b.textContent='入力不要（'+(it.reason||'自動')+'）';
+    }
+    row.appendChild(b);
     form.appendChild(row);
   });
 }
