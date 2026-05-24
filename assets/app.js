@@ -74,6 +74,22 @@ function deptItems(fac,dep){ return realDepts(fac,dep).flatMap(d=>(HAIFU[fac]&&H
 //   ※rehabRankは部分一致includes()。「外来リハビリ総単位数」(総あり)と「外来リハビリ単位数」(疾患別・総なし)は別文字列＝衝突しない。総トークンを先に置く。
 const REHAB_ORDER=['のべリハビリ単位数','外来リハビリ総単位数','入院リハビリ総単位数','外来リハビリ単位数','入院リハビリ単位数','PT稼働率','OT稼働率','ST稼働率','強化デイケア　総単位数','のべ実施回数','強化デイケア　稼働率','訪問リハビリ総単位数','のべ訪問リハビリ件数','平均訪問リハビリ件数'];
 function rehabRank(t){ for(let i=0;i<REHAB_ORDER.length;i++){ if(String(t).includes(REHAB_ORDER[i])) return i; } return 99; }
+// ★★★ グラフ表示順ルール（全部署共通・2026-05-25 統一）。これが「並び順の正」。
+//   ① 総数（のべ〇〇/総〇〇/合計/総件数/受診者数/患者数/利用者数/入居者数/訪問総数 等）を先頭
+//   ② 年度別累積など総数派生
+//   ③ その他の個別指標（CT/MRI/初診数 等）
+//   ④ 内訳＝一括折れ線（疾患別/項目別/施設別）
+//   ⑤ 率・平均（稼働率/復帰率/割合/回転率/平均/読影率）は最後
+//   ※リハビリ統合タブのみ REHAB_ORDER で詳細指定。安定sortなので同順位内は元の並びを維持。
+//   ※「内訳(ml)」判定を総数判定より先に行う＝総数語を含む一括折れ線(例 グループホーム訪問人数の内訳)を総数扱いしない。
+function gGraphRank(spec){
+  const t=String(spec.title||'');
+  if(/稼働率|復帰率|占床率|病床利用率|割合|回転率|平均|読影率|達成率|出席率/.test(t)) return 5;     // 率・平均＝最後
+  if(spec.kind==='ml' || /内訳|疾患別|項目別|施設別/.test(t)) return 4;                              // 内訳(一括折れ線)
+  if(spec.kind==='kenshincum') return 1;                                                            // 年度別累積＝総数の直後
+  if(/のべ|総数|総件数|総単位数|総訪問|合計|検査総|受診者数|利用者数|入所者数|入居者数|訪問総数|患者数|総人数/.test(t)) return 0;  // 総数＝先頭
+  return 3;                                                                                          // その他の個別指標
+}
 // 施設キーの正規化（haifuとdashboardで表記差：スペース/（注記）/介護 等を吸収）
 function normFac(s){ return String(s).replace(/[\s　]/g,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').replace(/介護/g,''); }
 function graphsForFac(fac){
@@ -110,9 +126,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525r')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525r')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525r')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525s')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525s')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525s')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -228,22 +244,14 @@ function renderDeptCharts(items){
     if(g['系列']){ specs.push({kind:'ml', title:g.title, g}); mlTitles.add(norm(g.title)); }
   }));
   found.forEach((o,name)=>{ if(!mlTitles.has(norm(name))) specs.push({kind:'bar', title:name, name, o}); });
-  if(DEPT_GROUPS[curDept]) specs.sort((a,b)=>rehabRank(a.title)-rehabRank(b.title));  // 統合タブは指定順
-  // 放射線：個別グラフ(総件数→MRI→CT)を先に、その他項目の一括折れ線を後に（sortは安定＝同種内の順は維持）
-  if(curDept==='放射線') specs.sort((a,b)=>(a.kind==='bar'?0:1)-(b.kind==='bar'?0:1));
-  // 健診：のべ受診者数(週次・最上位)→年度別累積(季節変動対策)→内訳一括折れ線 の順。累積チャートを追加。
+  // 健診：のべ受診者数のweekly系列から「年度別累積（4月起点・単月/累積）」チャートを追加（季節変動対策）
   if(curDept==='健診'){
     const nobe=[...found.entries()].find(([n])=>/受診者|健診/.test(n));
     if(nobe) specs.push({kind:'kenshincum', title:'健診受診者数 年度別（4月起点・単月/累積）', series:nobe[1].series});
-    const rank=s=> s.kind==='bar'?0 : (s.kind==='kenshincum'?1 : 2);
-    specs.sort((a,b)=>rank(a)-rank(b));
   }
-  // ヘルパーステーション：総数を先頭ルール（のべ訪問総数→訪問内訳→総単位数→平均）。総単位数が最下部にならないように。
-  if(curDept==='ヘルパーステーション'){
-    const HORDER=['のべ訪問総数','ヘルパー訪問内訳','総単位数','平均訪問件数'];
-    const rk=t=>{ for(let i=0;i<HORDER.length;i++) if(String(t).includes(HORDER[i])) return i; return 99; };
-    specs.sort((a,b)=>rk(a.title)-rk(b.title));
-  }
+  // 表示順：リハビリ統合タブのみ専用順、それ以外は全部署共通ルール（総数を先頭→個別→内訳→率/平均）。安定sortで同順位は元の並び維持。
+  if(DEPT_GROUPS[curDept]) specs.sort((a,b)=>rehabRank(a.title)-rehabRank(b.title));
+  else specs.sort((a,b)=>gGraphRank(a)-gGraphRank(b));
   specs.forEach(s=>{
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=s.title; card.appendChild(h);
