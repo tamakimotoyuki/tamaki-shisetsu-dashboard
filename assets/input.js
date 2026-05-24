@@ -53,8 +53,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524n')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260524n')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524o')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260524o')).json(); }catch(e){ RANGES={}; }
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -122,7 +122,7 @@ function renderForm(){
 
   const h1=document.createElement('div'); h1.className='sec-h'; h1.textContent='① 入力が必要な項目（先週1週間の実数）'; form.appendChild(h1);
   if(!inputs.length){ const p=document.createElement('div'); p.style.cssText='color:#889;font-size:13px;padding:6px'; p.textContent='（この部署は手入力項目がありません）'; form.appendChild(p); }
-  inputs.forEach(it=>{
+  const renderInputRow=(it)=>{
     const row=document.createElement('div'); row.className='inp-row';
     const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=it['項目'];
     if(it['基準']){ const k=document.createElement('span'); k.className='kij'; k.textContent='基準:'+it['基準']; lbl.appendChild(k); }
@@ -141,7 +141,16 @@ function renderForm(){
       row.appendChild(warn); chk();
     }
     form.appendChild(row);
-  });
+  };
+  // 病棟は先週分(毎週)/前月末(毎月10日以降)に分ける。区分が無い部署は従来どおり一覧
+  if(inputs.some(it=>it['区分'])){
+    const wk=inputs.filter(it=>it['区分']!=='前月末');  // 先週分＋区分なし
+    const mo=inputs.filter(it=>it['区分']==='前月末');
+    if(wk.length){ const s=document.createElement('div'); s.className='sub-h'; s.textContent='■ 先週分（毎週入力）'; form.appendChild(s); wk.forEach(renderInputRow); }
+    if(mo.length){ const s=document.createElement('div'); s.className='sub-h mo'; s.textContent='■ 前月末報告（毎月10日以降に入力／毎週は不要）'; form.appendChild(s); mo.forEach(renderInputRow); }
+  } else {
+    inputs.forEach(renderInputRow);
+  }
 
   const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 入力不要（自動で入ります／ファイル提出でOK）'; form.appendChild(h2);
   notInputs.forEach(it=>{
@@ -236,7 +245,8 @@ function requiredMissing(){
   const cur=collectForm().values;
   const miss=[];
   items.forEach(it=>{
-    if(it.mode==='input' && it.type!=='datelist'){
+    // 前月末（毎月10日以降）の項目は毎週の提出では必須にしない
+    if(it.mode==='input' && it.type!=='datelist' && it['区分']!=='前月末'){
       const v=cur[it['項目']];
       if(v===undefined||v===null||v==='') miss.push(it['項目']);
     }

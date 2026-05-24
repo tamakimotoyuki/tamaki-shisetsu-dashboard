@@ -81,6 +81,8 @@ tbody tr.sel{background:#e3f0ff;}
 }
 .sec-h{font-size:14px;color:var(--blue);margin:18px 0 8px;border-left:4px solid var(--green);padding-left:8px;}
 .sec-h.auto{color:#889;border-left-color:#ccc;}
+.sub-h{grid-column:1/-1;font-size:12.5px;font-weight:bold;color:#0068c4;margin:8px 0 2px;padding-left:4px;}
+.sub-h.mo{color:#8a5200;}
 .inp-row{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:7px 8px;border-bottom:1px solid var(--line);}
 /* 異常値のソフト警告（入力値を確認してください） */
 .val-warn{flex-basis:100%;width:100%;color:#a05a00;font-size:11.5px;line-height:1.3;}
