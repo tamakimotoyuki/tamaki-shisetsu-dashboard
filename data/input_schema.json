@@ -1306,6 +1306,30 @@
         "mode": "auto",
         "type": "number",
         "reason": "過去データから自動"
+      },
+      {
+        "項目": "総単位（介護）",
+        "単位": "単位",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "総単位（支援）",
+        "単位": "単位",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "出勤者数（のべ）",
+        "単位": "人",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
       }
     ],
     "リハビリ強化デイケア": [
@@ -1340,6 +1364,38 @@
         "mode": "auto",
         "type": "number",
         "reason": "過去データから自動"
+      },
+      {
+        "項目": "総単位（介護）",
+        "単位": "単位",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "総単位（支援）",
+        "単位": "単位",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "人数（1日あたり従事者数）",
+        "単位": "人",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "日/週（稼働日）",
+        "単位": "日",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
       }
     ],
     "栄養": [
@@ -1598,6 +1654,88 @@
         "単位": "",
         "mode": "input",
         "type": "number"
+      }
+    ],
+    "医療区分・時間外（竹内課長）": [
+      {
+        "項目": "医療区分1",
+        "単位": "名",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "医療区分2",
+        "単位": "名",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "医療区分3",
+        "単位": "名",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "時間外診療（外来）",
+        "単位": "名",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "時間外診療（入院）",
+        "単位": "名",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "時間外問い合わせ（来院）",
+        "単位": "件",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "時間外問い合わせ（電話指示）",
+        "単位": "件",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "時間外問い合わせ（他院指示）",
+        "単位": "件",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "入退院支援加算",
+        "単位": "件",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
+      },
+      {
+        "項目": "入院時支援加算",
+        "単位": "件",
+        "基準": null,
+        "mode": "input",
+        "type": "number",
+        "reason": ""
       }
     ]
   },
