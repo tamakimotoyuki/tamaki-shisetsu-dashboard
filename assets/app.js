@@ -42,8 +42,16 @@ const GRAPH_HINT={
   '緊急入院':'入退院・救急','入退院報告':'入退院・救急','手術室':'手術室',
   '放射線':'放射線部','健診':'健診センター',
   '検査':'検査部','薬剤':'薬剤部','栄養':'栄養部','リハビリ（病院）':'リハビリ部','訪問リハビリ':'リハビリ部',
-  'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来'
+  'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来','リハビリ':'リハビリ部'
 };
+// ★表示専用：複数のhaifu部署キーを1タブに束ねる（データ層は3キーのまま＝ingest/自動追記が部署名で一致するため統合しない）
+const DEPT_GROUPS={'リハビリ':['リハビリ（病院）','訪問リハビリ','リハビリ強化デイケア']};
+const GROUP_OF={}; for(const g in DEPT_GROUPS) DEPT_GROUPS[g].forEach(d=>GROUP_OF[d]=g);
+function realDepts(fac,dep){ return DEPT_GROUPS[dep] ? DEPT_GROUPS[dep].filter(d=>HAIFU[fac]&&HAIFU[fac][d]) : [dep]; }
+function deptItems(fac,dep){ return realDepts(fac,dep).flatMap(d=>(HAIFU[fac]&&HAIFU[fac][d])||[]); }
+// リハビリ統合タブのグラフ表示順（タイトル部分一致でランク：のべ単位→外来→入院→PT/OT/ST→強化(単位/実施/稼働)→訪問(単位/件数/平均)）
+const REHAB_ORDER=['のべリハビリ単位数','外来リハビリ単位数','入院リハビリ単位数','PT稼働率','OT稼働率','ST稼働率','強化デイケア　総単位数','のべ実施回数','強化デイケア　稼働率','訪問リハビリ総単位数','のべ訪問リハビリ件数','平均訪問リハビリ件数'];
+function rehabRank(t){ for(let i=0;i<REHAB_ORDER.length;i++){ if(String(t).includes(REHAB_ORDER[i])) return i; } return 99; }
 // 施設キーの正規化（haifuとdashboardで表記差：スペース/（注記）/介護 等を吸収）
 function normFac(s){ return String(s).replace(/[\s　]/g,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').replace(/介護/g,''); }
 function graphsForFac(fac){
@@ -80,9 +88,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525e')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525e')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525e')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525f')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525f')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525f')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -94,8 +102,14 @@ function selFac(f){
   curFac=f;
   document.querySelectorAll('#fac-tabs button').forEach(b=>b.classList.toggle('active', b.dataset.key===f));
   const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
-  Object.keys(HAIFU[f]).forEach((d)=>{ const b=document.createElement('button'); b.textContent=shortLabel(d); b.dataset.key=d; b.onclick=()=>selDept(d); dt.appendChild(b); });
-  selDept(Object.keys(HAIFU[f])[0]);
+  const emitted=new Set(); let firstKey=null;
+  Object.keys(HAIFU[f]).forEach((d)=>{
+    const key=GROUP_OF[d]||d;                 // グループ所属部署は束ねたタブ名に
+    if(GROUP_OF[d]){ if(emitted.has(key)) return; emitted.add(key); }
+    if(firstKey===null) firstKey=key;
+    const b=document.createElement('button'); b.textContent=shortLabel(key); b.dataset.key=key; b.onclick=()=>selDept(key); dt.appendChild(b);
+  });
+  selDept(firstKey);
   fixNav();  // 部署タブの行数が施設で変わる→追従ヘッダー高さを再計算
 }
 function selDept(d){
@@ -107,7 +121,7 @@ function selDept(d){
 function clearCharts(){ charts.forEach(c=>c.destroy()); charts=[]; }
 
 function renderDept(){
-  const items=HAIFU[curFac][curDept];
+  const items=deptItems(curFac,curDept);   // グループタブは構成3部署の項目を結合
   // 左：配布資料を2列グリッドで（区分なし・基準はタイトル下に小さく）
   const grid=document.getElementById('metric-grid'); grid.innerHTML='';
   const renderCell=(it)=>{
@@ -120,7 +134,7 @@ function renderDept(){
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   };
   // 区分ブロック表示（左右に並べる）：手術＝先週/今週、透析＝本館/センター
-  const BLOCKS=['先週の手術','今週の手術予定','本館透析室','センター透析室'];
+  const BLOCKS=['先週の手術','今週の手術予定','本館透析室','センター透析室','リハビリ','リハビリ強化デイケア','訪問リハビリ','その他'];
   if(items.some(it=>BLOCKS.includes(it['区分']))){
     const present=BLOCKS.filter(k=>items.some(it=>it['区分']===k));
     const wrap=document.createElement('div'); wrap.className='surg-wrap';
@@ -184,28 +198,24 @@ function renderDeptCharts(items){
   if(!found.size){ items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
   // 複数折れ線が代替する部署は単系列ダッシュボードを出さない（透析＝合計/本館/健診センターの3系列で表示）
   if(SUPPRESS_DASHBOARD.has(curDept)) found.clear();
-  // 複数折れ線グループ（健診の内訳・部屋別手術件数・透析 等）を先頭に追加
-  let extra=0; const mlTitles=new Set();
-  multilineFor(curFac, curDept).forEach(g=>{
-    if(!g['系列']) return;
+  // グラフ仕様を1リストに集約（複数折れ線＝健診/部屋別手術/透析/リハ疾患別 ＋ 単系列ダッシュボード）。
+  // グループタブ（リハビリ）は構成部署すべての複数折れ線を集め、表示順をREHAB_ORDERで整える。
+  const mlTitles=new Set(); const specs=[];
+  realDepts(curFac, curDept).forEach(d=> multilineFor(curFac, d).forEach(g=>{
+    if(g['系列']){ specs.push({kind:'ml', title:g.title, g}); mlTitles.add(norm(g.title)); }
+  }));
+  found.forEach((o,name)=>{ if(!mlTitles.has(norm(name))) specs.push({kind:'bar', title:name, name, o}); });
+  if(DEPT_GROUPS[curDept]) specs.sort((a,b)=>rehabRank(a.title)-rehabRank(b.title));  // 統合タブは指定順
+  specs.forEach(s=>{
     const card=document.createElement('div'); card.className='chartcard';
-    const h=document.createElement('h3'); h.textContent=g.title; card.appendChild(h);
-    const box=document.createElement('div'); box.className='chartbox'; box.style.height='320px';
+    const h=document.createElement('h3'); h.textContent=s.title; card.appendChild(h);
+    const box=document.createElement('div'); box.className='chartbox'; if(s.kind==='ml') box.style.height='320px';
     const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
     wrap.appendChild(card);
-    charts.push(buildLineChart(cv, g['週ラベル'], g['系列']));
-    extra++; mlTitles.add(norm(g.title));
+    if(s.kind==='ml') charts.push(buildLineChart(cv, s.g['週ラベル'], s.g['系列'], s.g['右軸']||[]));
+    else charts.push(buildChart(cv, {name:s.name, o:s.o}, itemByGraph[s.name]||{}));
   });
-  found.forEach((o,name)=>{
-    if(mlTitles.has(norm(name))) return; // 複数折れ線で表示済みの単系列はスキップ（部屋別手術件数など）
-    const card=document.createElement('div'); card.className='chartcard';
-    const h=document.createElement('h3'); h.textContent=name; card.appendChild(h);
-    const box=document.createElement('div'); box.className='chartbox';
-    const cv=document.createElement('canvas'); box.appendChild(cv); card.appendChild(box);
-    wrap.appendChild(card);
-    charts.push(buildChart(cv, {name,o}, itemByGraph[name]||{}));
-  });
-  const total=extra+[...found.keys()].filter(name=>!mlTitles.has(norm(name))).length; // 複数折れ線で表示済の単系列は数えない
+  const total=specs.length;
   document.getElementById('charts-title').textContent=`グラフ（週次推移）${total?`　${total}件`:''}`;
   if(!total){ wrap.innerHTML='<p class="nochart">この部署の週次グラフはありません（表の値のみ）。</p>'; }
 }
@@ -264,19 +274,23 @@ function multilineFor(fac, dep){
 // 複数折れ線（健診の内訳：各項目を1本の線で・棒や移動平均なし）。
 // 系列の大小が混在する時は小さい系列を第2Y軸(右)に振り分けて潰れを防ぐ。
 const PALETTE=['#0068c4','#e2001a','#5BA640','#f39c12','#8e44ad','#16a085','#d35400','#2c3e50','#c0392b','#2980b9'];
-function buildLineChart(cv, labels, series){
+function buildLineChart(cv, labels, series, rightAxis){
+  rightAxis = rightAxis || [];               // 明示指定の第2Y軸系列名（例：運動器）
   const entries=Object.entries(series);
   const maxes=entries.map(([,v])=>Math.max(0,...v.filter(x=>typeof x==='number')));
   const gMax=Math.max(1,...maxes), thr=gMax*0.25;
-  const useRight=maxes.some(m=>m<thr) && maxes.some(m=>m>=thr); // 大小混在時のみ2軸
+  const explicit=rightAxis.length>0;
+  const autoRight=maxes.some(m=>m<thr) && maxes.some(m=>m>=thr); // 大小混在時のみ自動2軸
+  const isRight=(name,i)=> explicit ? rightAxis.includes(name) : (autoRight && maxes[i]<thr);
+  const useRight = explicit ? entries.some(([n],i)=>isRight(n,i)) : autoRight;
   const ds=entries.map(([name,vals],i)=>{
-    const small=useRight && maxes[i]<thr;
-    return {label:name+(small?'（右軸）':''),data:vals,yAxisID:small?'y1':'y',
+    const r=isRight(name,i);
+    return {label:name+(r?'（右軸）':''),data:vals,yAxisID:r?'y1':'y',
       borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',
-      borderWidth:1.5,pointRadius:0,cubicInterpolationMode:'monotone',tension:.4,spanGaps:true,borderDash:small?[4,3]:[]};
+      borderWidth:1.5,pointRadius:0,cubicInterpolationMode:'monotone',tension:.4,spanGaps:true,borderDash:r?[4,3]:[]};
   });
-  // 左軸＝綺麗な下限/上限/目盛り
-  const leftVals=[].concat(...entries.filter((_,i)=>!(useRight&&maxes[i]<thr)).map(([,v])=>v));
+  // 左軸＝綺麗な下限/上限/目盛り（右軸の系列は左軸スケール計算から除外）
+  const leftVals=[].concat(...entries.filter(([n],i)=>!isRight(n,i)).map(([,v])=>v));
   const nb=niceBounds(leftVals, null);
   const scales={x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},
     y:nb?{min:nb.min,max:nb.max,position:'left',ticks:{stepSize:nb.step,font:{size:9}}}:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};

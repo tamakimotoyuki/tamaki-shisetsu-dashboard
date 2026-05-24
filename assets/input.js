@@ -50,11 +50,13 @@ async function boot(){
   document.getElementById('export-all').addEventListener('click', exportAll);
   document.getElementById('send').addEventListener('click', sendToServer);
   const sa=document.getElementById('send-all'); if(sa) sa.addEventListener('click', sendAllToServer);
+  // 緑「更新」：現在の入力を保存→再描画＆自動計算を再計算（#8）。サーバー受領値の再取得は#4で追加予定
+  const up=document.getElementById('update'); if(up) up.addEventListener('click', ()=>{ persistForm(); renderForm(); flash('再計算しました'); });
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524o')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260524o')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525u')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525u')).json(); }catch(e){ RANGES={}; }
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -67,8 +69,8 @@ async function enter(){
 function applyEntryMode(){
   const p=new URLSearchParams(location.search);
   if(p.get('admin')!=='1'){
-    const e=document.getElementById('export'), ea=document.getElementById('export-all');
-    if(e) e.style.display='none'; if(ea) ea.style.display='none';
+    // 書き出し＋「全部署提出」は管理者運用→職員には出さない（自分の1部署は「この部署を提出」）
+    ['export','export-all','send-all'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display='none'; });
   }
   const dq=p.get('dept'); if(!dq) return;
   const dd=decodeURIComponent(dq), fd=p.get('fac')?decodeURIComponent(p.get('fac')):null;
@@ -110,6 +112,35 @@ function selDept(d){
   renderForm();
 }
 
+/* ---- 部署内で完結する自動計算（合計/比）をブラウザでその場計算して見せる（#8） ----
+   出せない項目（外部報告値・取込時計算）は null を返し「自動計算」バッジ表示にする。 */
+function computeAuto(it, vals){
+  const nm = it['項目'];
+  const num = k => { const v = vals[k]; const f = parseFloat(v); return isNaN(f) ? null : f; };
+  const sumPrefix = pre => {
+    let s = 0, any = false;
+    for (const k in vals) { if (k.startsWith(pre)) { const f = parseFloat(vals[k]); if (!isNaN(f)) { s += f; any = true; } } }
+    return any ? s : null;
+  };
+  if (nm === '合計 外来') return sumPrefix('外来 ');     // リハビリ：外来7疾患の和
+  if (nm === '合計 入院') return sumPrefix('入院 ');     // リハビリ：入院7疾患の和
+  if (nm.includes('一人あたりの訪問件数')) {            // 訪問リハ：のべ÷出勤
+    const a = num('訪問件数（のべ）'), b = num('出勤者数（のべ）');
+    return (a != null && b) ? Math.round(a / b * 10) / 10 : null;
+  }
+  return null;  // それ以外（栄養一人あたり・稼働率・期間集計・外部報告値）は取込時計算＝バッジ表示
+}
+// 入力変更時に自動計算行の値を更新（その場計算できるものだけ）
+function refreshAutoValues(){
+  const vals = collectForm().values;
+  document.querySelectorAll('#form .auto-row[data-autoitem]').forEach(row => {
+    const it = JSON.parse(row.dataset.autoitem);
+    const v = computeAuto(it, vals);
+    const vs = row.querySelector('.auto-val');
+    if (vs) vs.textContent = (v != null) ? (v + (it['単位'] ? ' ' + it['単位'] : '')) : '—';
+  });
+}
+
 /* ---- フォーム描画 ---- */
 function renderForm(){
   const items=SCHEMA[curFac][curDept];
@@ -131,11 +162,12 @@ function renderForm(){
       row.appendChild(buildDatelist(it));
     }else{
       const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目']; inp.placeholder='先週の実数';
+      if(it['区分']==='前月末') inp.dataset.optional='1';  // 前月末は必須でない＝薄赤対象外
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
       const warn=document.createElement('div'); warn.className='val-warn';
       const chk=()=>{ warn.textContent=anomalyMsg(it['項目'], inp.value, it['単位']); };
-      inp.addEventListener('change', ()=>{ persistForm(); updateMissingBanner(); chk(); });
-      inp.addEventListener('input', chk);
+      inp.addEventListener('change', ()=>{ persistForm(); });
+      inp.addEventListener('input', ()=>{ chk(); updateMissingBanner(); refreshAutoValues(); });
       row.appendChild(inp);
       const u=document.createElement('span'); u.className='unit'; u.textContent=it['単位']||''; row.appendChild(u);
       row.appendChild(warn); chk();
@@ -152,26 +184,39 @@ function renderForm(){
     inputs.forEach(renderInputRow);
   }
 
-  const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 入力不要（自動で入ります／ファイル提出でOK）'; form.appendChild(h2);
+  const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 自動計算・入力不要（グレーの項目は入力できません）'; form.appendChild(h2);
   notInputs.forEach(it=>{
     const row=document.createElement('div'); row.className='auto-row';
     const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=it['項目']; row.appendChild(lbl);
-    const b=document.createElement('span'); b.className='badge';
     if(it.mode==='file'){
+      const b=document.createElement('span'); b.className='badge';
       b.textContent='📄 入力不要：「'+(it.file||'記録ファイル')+'」を総務・DX推進室に渡してください';
       b.style.cssText='background:#fff4e5;color:#a05a00;border-color:#f0c890;';
+      row.appendChild(b);
     }else{
-      b.textContent='入力不要（'+(it.reason||'自動')+'）';
+      const tag=document.createElement('span'); tag.className='auto-tag'; tag.textContent='自動計算';
+      tag.title=it.reason||'自動計算'; row.appendChild(tag);
+      const vs=document.createElement('span'); vs.className='auto-val';
+      row.dataset.autoitem=JSON.stringify(it);   // ★常にタグ付け→入力に応じてrefreshAutoValuesが更新
+      const v=computeAuto(it, dd.values||{});
+      vs.textContent=(v!=null)?(v+(it['単位']?' '+it['単位']:'')):'—';
+      if(v==null) vs.title=it.reason||'取込時に計算';
+      row.appendChild(vs);
     }
-    row.appendChild(b);
     form.appendChild(row);
   });
   updateMissingBanner();
+  refreshAutoValues();
 }
 // この部署の未入力の必須項目を、フォーム先頭に目立つバナーで表示（入力に応じてリアルタイム更新）
 function updateMissingBanner(){
   const el=document.getElementById('miss-banner'); if(!el) return;
   const miss=requiredMissing();
+  // 未入力の必須欄を薄赤に（前月末＝任意は対象外）。入力されたら外れる
+  const missSet=new Set(miss);
+  document.querySelectorAll('#form .inp-row input[type=number]').forEach(inp=>{
+    inp.classList.toggle('miss', !inp.dataset.optional && missSet.has(inp.dataset.item));
+  });
   if(!miss.length){
     el.className='miss-ok';
     el.innerHTML='✅ この部署の必須項目はすべて入力済みです。「この部署を提出」できます。';
@@ -223,6 +268,18 @@ function collectForm(){
 }
 function persistForm(){ if(!curFac||!curDept) return; setDeptData(curFac,curDept,collectForm()); }
 function flash(msg){ const n=document.getElementById('saved-note'); n.textContent=msg; setTimeout(()=>n.textContent='',2000); }
+// 送信中スピナー＋ボタン無効化（二重送信防止）
+function setBusy(on, label){
+  let ov=document.getElementById('busy-overlay');
+  if(on){
+    if(!ov){ ov=document.createElement('div'); ov.id='busy-overlay';
+      ov.innerHTML='<div class="busy-box"><span class="spinner"></span><span class="busy-label"></span></div>';
+      document.body.appendChild(ov); }
+    ov.querySelector('.busy-label').textContent=label||'処理中…';
+    ov.style.display='flex';
+  }else if(ov){ ov.style.display='none'; }
+  ['send','send-all','save','update'].forEach(id=>{ const b=document.getElementById(id); if(b) b.disabled=!!on; });
+}
 
 function download(name,obj){
   const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
@@ -264,12 +321,14 @@ async function sendToServer(){
   }
   // この部署のみ提出
   const payload={week:curWeek(), data:{[cellKey(curFac,curDept)]:deptData(curFac,curDept)}};
+  setBusy(true,'送信中…');
   try{
     const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     const j=await r.json().catch(()=>({}));
     if(j.ok){ markSubmitted(curFac,curDept); buildDeptTabs(); updateMissingBanner(); flash(`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`); }
-    else flash('提出に失敗しました');
-  }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
+    else { flash('提出に失敗しました'); alert('提出に失敗しました。もう一度「この部署を提出」を押してください。\n入力した数値は保持されています。'); }
+  }catch(e){ flash('送信エラー'); alert('送信に失敗しました（ネットワークをご確認ください）。もう一度提出してください。\n入力した数値は保持されています。'); }
+  finally{ setBusy(false); }
 }
 // ★全部署まとめて提出：今週 入力のある全部署を1リクエストで提出（1人が複数部署を入れた時・管理者運用）。
 //   必須未入力がある部署はスキップし、最後に結果を表示。
@@ -281,11 +340,13 @@ async function sendAllToServer(){
   if(!keys.length){ alert('入力済みの部署がありません。'); return; }
   if(!confirm(`入力済みの ${keys.length}部署 をまとめて提出します。よろしいですか？\n（各部署の必須チェックは個別提出時に行ってください。ここは入力済みデータをそのまま送ります）`)) return;
   const data={}; keys.forEach(k=>{ data[k]=store[k]; });
+  setBusy(true,'全部署を送信中…');
   try{
     const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({week:curWeek(), data})});
     const j=await r.json().catch(()=>({}));
     if(j.ok){ keys.forEach(k=>{ const [f,d]=k.split('||'); markSubmitted(f,d); }); buildDeptTabs(); flash(`全部署を提出しました（${keys.length}部署・${j.rows||0}行）`); }
-    else flash('提出に失敗しました');
-  }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
+    else { flash('提出に失敗しました'); alert('提出に失敗しました。もう一度押してください。\n入力した数値は保持されています。'); }
+  }catch(e){ flash('送信エラー'); alert('送信に失敗しました（ネットワークをご確認ください）。もう一度提出してください。\n入力した数値は保持されています。'); }
+  finally{ setBusy(false); }
 }
 boot();

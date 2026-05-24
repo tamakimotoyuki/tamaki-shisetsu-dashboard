@@ -57,8 +57,8 @@ tbody tr.sel{background:#e3f0ff;}
 .mlab .mk{display:block;color:#a33;font-size:10px;line-height:1.2;}
 .mcell .mv{font-weight:bold;font-size:13px;white-space:nowrap;color:#113;}
 /* 手術：先週／今週を左右2ブロックで表示（アンギオ室の内訳は字下げ） */
-.surg-wrap{grid-column:1/-1;display:flex;gap:24px;}
-.surg-col{flex:1;min-width:0;}
+.surg-wrap{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 24px;}
+.surg-col{flex:1 1 230px;min-width:0;}
 .mcell.sub{padding-left:20px;border-bottom:1px dotted var(--line);}
 .mcell.sub .mt{font-size:11.5px;color:#556;}
 .mcell.sub .mt::before{content:"└ ";color:#9aa;}
@@ -112,6 +112,16 @@ tbody tr.sel{background:#e3f0ff;}
 .miss-ok{background:#eef8ea;border:1px solid #bfe0b0;border-left:5px solid var(--green);color:#2f6a18;border-radius:8px;padding:10px 14px;margin:4px 0 12px;font-size:13px;}
 .miss-list{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;}
 .miss-chip{background:#fff;border:1px solid #f0c890;border-radius:11px;padding:1px 9px;font-size:11.5px;color:#8a5200;}
+/* #8 入力アプリUX：未入力の必須欄=薄赤／自動計算=グレー＋値／送信スピナー */
+.inp-row input[type=number].miss{background:#fdecec;border-color:#e58a8a;}
+.auto-row .auto-tag{font-size:10.5px;background:#eceef2;color:#7a8190;border:1px solid #dde;border-radius:10px;padding:1px 8px;white-space:nowrap;}
+.auto-row .auto-val{min-width:64px;text-align:right;font-weight:bold;color:#556;font-size:13px;}
+#busy-overlay{position:fixed;inset:0;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.busy-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 22px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);}
+.busy-label{font-size:14px;color:#335;}
+.spinner{width:20px;height:20px;border:3px solid #d7e3f0;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
 .dept-done{color:var(--green);font-weight:bold;}
 
 /* 全画面共通フッター（所在地・powered byロゴ） */
