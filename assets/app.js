@@ -38,7 +38,7 @@ const SUPPRESS_DASHBOARD=new Set(['透析']);
 const GRAPH_HINT={
   // ★地域包括ケア病棟(60床)と地域包括医療病棟(60床)は同じ物理病棟（移行中の旧名/新名・施設台帳で確認）→同じ60床グラフ
   '一般病棟（地域包括ケア）':'地域包括ケア病棟','地域包括医療 (60床) ※毎月10日以降':'地域包括ケア病棟','療養病棟':'療養病棟',
-  '緊急入院':'入退院・救急','入退院報告':'入退院・救急','手術室':'手術室','アンギオ室':'手術室',
+  '緊急入院':'入退院・救急','入退院報告':'入退院・救急','手術室':'手術室',
   '放射線':'放射線部','健診':'健診センター',
   '検査':'検査部','薬剤':'薬剤部','栄養':'栄養部','リハビリ（病院）':'リハビリ部','訪問リハビリ':'リハビリ部',
   'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来'
@@ -79,9 +79,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525b')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525b')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525b')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -118,6 +118,30 @@ function renderDept(){
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   };
+  // 手術（先週の手術／今週の手術予定）＝左右2ブロックで個別行を表示（OP室/外来/アンギオ室└内訳）
+  const SURG=['先週の手術','今週の手術予定'];
+  if(items.some(it=>SURG.includes(it['区分']))){
+    const wrap=document.createElement('div'); wrap.className='surg-wrap';
+    SURG.forEach(kbn=>{
+      const col=document.createElement('div'); col.className='surg-col';
+      const gi=items.filter(it=>it['区分']===kbn); if(!gi.length) return;
+      const sum=gi.find(it=>it['合計']);
+      const hd=document.createElement('div'); hd.className='mkubun';
+      hd.textContent=kbn+(sum?`　合計 ${sum['値表示']}${sum['単位']||''}`:''); col.appendChild(hd);
+      gi.filter(it=>!it['合計']).forEach(it=>{
+        const cell=document.createElement('div');
+        cell.className='mcell'+(it['レベル']===2?' sub':'')+(it['注記']?' note':'');
+        const lab=document.createElement('div'); lab.className='mlab';
+        lab.innerHTML=`<span class="mt">${it['注記']?'（'+it['項目']+'）':it['項目']}</span>`;
+        const val=document.createElement('div'); val.className='mv';
+        val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
+        cell.appendChild(lab); cell.appendChild(val); col.appendChild(cell);
+      });
+      wrap.appendChild(col);
+    });
+    grid.appendChild(wrap);
+    renderDeptCharts(items); return;  // 表の描画はここで完了（グラフは共通処理へ）
+  }
   // 「先週分/前月末/稼働率」の区分があれば原本どおり見出し分け。
   // ※haifuの区分には「計算/入力」等のカテゴリ値も混在するので、その3値のときだけグループ化する。
   const KUBUN=['先週分','前月末','稼働率'];
@@ -131,6 +155,9 @@ function renderDept(){
   } else {
     items.forEach(renderCell);
   }
+  renderDeptCharts(items);
+}
+function renderDeptCharts(items){
   document.getElementById('table-title').textContent=`配布資料（${shortLabel(curDept)}）`;
   // 右：この部署のグラフをまとめて縦に並べる（クリック不要）
   clearCharts();
@@ -176,7 +203,7 @@ function renderDept(){
     wrap.appendChild(card);
     charts.push(buildChart(cv, {name,o}, itemByGraph[name]||{}));
   });
-  const total=found.size+extra;
+  const total=extra+[...found.keys()].filter(name=>!mlTitles.has(norm(name))).length; // 複数折れ線で表示済の単系列は数えない
   document.getElementById('charts-title').textContent=`グラフ（週次推移）${total?`　${total}件`:''}`;
   if(!total){ wrap.innerHTML='<p class="nochart">この部署の週次グラフはありません（表の値のみ）。</p>'; }
 }
