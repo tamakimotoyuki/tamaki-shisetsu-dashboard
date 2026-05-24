@@ -161,15 +161,34 @@ function exportAll(){
   download(`全体会議入力_${curWeek()}.json`, {week:curWeek(),data:loadStore()});
   flash('入力済み全部署を書き出しました');
 }
+// この部署の未入力の必須項目（入力モードの数値欄で空のもの）を返す。0はOK・日付リストは任意。
+function requiredMissing(){
+  const items=(SCHEMA[curFac]&&SCHEMA[curFac][curDept])||[];
+  const cur=collectForm().values;
+  const miss=[];
+  items.forEach(it=>{
+    if(it.mode==='input' && it.type!=='datelist'){
+      const v=cur[it['項目']];
+      if(v===undefined||v===null||v==='') miss.push(it['項目']);
+    }
+  });
+  return miss;
+}
+// ★提出（サーバー保存）：必須項目が全部埋まっていなければ提出不可。一時保存は別途いつでも可。
 async function sendToServer(){
   persistForm();
   if(!SAVE_ENDPOINT){ alert('サーバー保存先が未設定です。当面は「書き出す」でJSONを保存して送ってください。'); return; }
-  const payload={week:curWeek(), data:loadStore()};
+  const miss=requiredMissing();
+  if(miss.length){
+    alert(`未入力の必須項目が ${miss.length}件 あるため提出できません。\n（0でもよいので数値を入れてください。途中なら「一時保存」を使ってください）\n\n・`+miss.slice(0,20).join('\n・')+(miss.length>20?'\n・…ほか':''));
+    return;
+  }
+  // この部署のみ提出
+  const payload={week:curWeek(), data:{[cellKey(curFac,curDept)]:deptData(curFac,curDept)}};
   try{
-    // GASのCORSプリフライト回避のため text/plain で送る（GASは postData.contents で受ける）
     const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     const j=await r.json().catch(()=>({}));
-    flash(j.ok?`サーバーに保存しました（${j.rows||0}行）`:'保存に失敗しました');
+    flash(j.ok?`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`:'提出に失敗しました');
   }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
 }
 boot();

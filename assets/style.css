@@ -8,7 +8,9 @@ body{margin:0;font-family:"Meiryo","Yu Gothic",sans-serif;color:#223;background:
 #login{min-height:100vh;align-items:center;justify-content:center;}  /* display は .page / .page.active で制御（非activeは display:none） */
 #login.active{display:flex;}
 .login-card{background:#fff;padding:32px 28px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.12);width:320px;text-align:center;}
+.login-logo{display:block;width:96px;height:auto;margin:0 auto 12px;}
 .login-card h1{color:var(--blue);font-size:18px;line-height:1.5;margin:0 0 18px;}
+.topbar-logo{height:28px;width:auto;background:#fff;border-radius:5px;padding:2px 4px;}
 .login-card label{display:block;text-align:left;font-size:13px;margin:10px 0 2px;}
 .login-card input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px;}
 .login-card button{margin-top:18px;width:100%;padding:11px;background:var(--blue);color:#fff;border:0;border-radius:8px;font-size:15px;cursor:pointer;}

@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="robots" content="noindex,nofollow">
+<meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+<meta name="googlebot" content="noindex,nofollow">
 <title>全体会議資料</title>
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
@@ -12,6 +16,7 @@
 <!-- ログインゲート -->
 <section id="login" class="page active">
   <form id="login-form" class="login-card">
+    <img class="login-logo" src="assets/logo.png" alt="たまき青空病院グループ">
     <h1>全体会議資料</h1>
     <label>ID<input id="uid" autocomplete="username" required></label>
     <label>パスワード<input id="upw" type="password" autocomplete="current-password" required></label>
@@ -23,6 +28,7 @@
 <!-- ダッシュボード -->
 <section id="dash" class="page">
   <header class="topbar">
+    <img class="topbar-logo" src="assets/logo.png" alt="たまき青空病院グループ">
     <span class="brand">全体会議資料</span>
     <span id="week-label" class="week"></span>
     <a class="link" href="input.html" style="text-decoration:none">✏️ 入力へ</a>
