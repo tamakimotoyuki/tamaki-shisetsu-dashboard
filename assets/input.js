@@ -35,6 +35,11 @@ function cellKey(f,d){ return f+'||'+d; }
 function deptData(f,d){ const s=loadStore(); return s[cellKey(f,d)]||{values:{},dates:{}}; }
 function setDeptData(f,d,obj){ const s=loadStore(); s[cellKey(f,d)]=obj; saveStore(s); }
 function deptHasInput(f,d){ const dd=deptData(f,d); return Object.values(dd.values||{}).some(v=>v!=='' && v!=null) || Object.values(dd.dates||{}).some(a=>a&&a.length); }
+/* ---- 提出済み記録（週ごと・サーバー提出した部署を覚えて可視化）---- */
+function subKey(){ return 'irakai:sub:'+curWeek(); }
+function loadSub(){ try{ return JSON.parse(localStorage.getItem(subKey()))||{}; }catch(e){ return {}; } }
+function isSubmitted(f,d){ return !!loadSub()[cellKey(f,d)]; }
+function markSubmitted(f,d){ const s=loadSub(); s[cellKey(f,d)]=new Date().toISOString().slice(0,16); localStorage.setItem(subKey(), JSON.stringify(s)); }
 
 /* ---- 起動（ログイン不要・入力フォームを直接表示）---- */
 async function boot(){
@@ -44,10 +49,11 @@ async function boot(){
   document.getElementById('export').addEventListener('click', exportDept);
   document.getElementById('export-all').addEventListener('click', exportAll);
   document.getElementById('send').addEventListener('click', sendToServer);
+  const sa=document.getElementById('send-all'); if(sa) sa.addEventListener('click', sendAllToServer);
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524k')).json();
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524l')).json();
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -88,7 +94,9 @@ function buildDeptTabs(){
   const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
   Object.keys(SCHEMA[curFac]).forEach(d=>{
     const b=document.createElement('button');
-    b.textContent=shortLabel(d)+(deptHasInput(curFac,d)?' ✓':'');
+    const mark = isSubmitted(curFac,d) ? ' ✅提出済' : (deptHasInput(curFac,d) ? ' ✓入力' : '');
+    b.textContent=shortLabel(d)+mark;
+    if(isSubmitted(curFac,d)) b.classList.add('submitted');
     b.dataset.dept=d;
     b.onclick=()=>selDept(d); dt.appendChild(b);
     if(d===curDept) b.classList.add('active');
@@ -229,7 +237,25 @@ async function sendToServer(){
   try{
     const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     const j=await r.json().catch(()=>({}));
-    flash(j.ok?`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`:'提出に失敗しました');
+    if(j.ok){ markSubmitted(curFac,curDept); buildDeptTabs(); updateMissingBanner(); flash(`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`); }
+    else flash('提出に失敗しました');
+  }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
+}
+// ★全部署まとめて提出：今週 入力のある全部署を1リクエストで提出（1人が複数部署を入れた時・管理者運用）。
+//   必須未入力がある部署はスキップし、最後に結果を表示。
+async function sendAllToServer(){
+  persistForm();
+  if(!SAVE_ENDPOINT){ alert('サーバー保存先が未設定です。'); return; }
+  const store=loadStore();
+  const keys=Object.keys(store).filter(k=>{ const d=store[k]; return Object.values(d.values||{}).some(v=>v!==''&&v!=null)||Object.values(d.dates||{}).some(a=>a&&a.length); });
+  if(!keys.length){ alert('入力済みの部署がありません。'); return; }
+  if(!confirm(`入力済みの ${keys.length}部署 をまとめて提出します。よろしいですか？\n（各部署の必須チェックは個別提出時に行ってください。ここは入力済みデータをそのまま送ります）`)) return;
+  const data={}; keys.forEach(k=>{ data[k]=store[k]; });
+  try{
+    const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({week:curWeek(), data})});
+    const j=await r.json().catch(()=>({}));
+    if(j.ok){ keys.forEach(k=>{ const [f,d]=k.split('||'); markSubmitted(f,d); }); buildDeptTabs(); flash(`全部署を提出しました（${keys.length}部署・${j.rows||0}行）`); }
+    else flash('提出に失敗しました');
   }catch(e){ flash('送信エラー（ネットワーク/エンドポイント要確認）'); }
 }
 boot();
