@@ -47,7 +47,7 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524j')).json();
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524k')).json();
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
