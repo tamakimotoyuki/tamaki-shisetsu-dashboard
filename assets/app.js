@@ -79,9 +79,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260524n')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260524n')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260524n')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260524p')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260524p')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260524p')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -118,13 +118,14 @@ function renderDept(){
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   };
-  // 区分（先週分/前月末/稼働率）があれば見出し分け（原本の構成に合わせる）。無ければ従来どおり一覧
-  if(items.some(it=>it['区分'])){
-    const order=['先週分','前月末','稼働率'];
-    const groups={}; items.forEach(it=>{ const k=it['区分']||'その他'; (groups[k]=groups[k]||[]).push(it); });
-    const keys=[...order.filter(k=>groups[k]), ...Object.keys(groups).filter(k=>!order.includes(k))];
+  // 「先週分/前月末/稼働率」の区分があれば原本どおり見出し分け。
+  // ※haifuの区分には「計算/入力」等のカテゴリ値も混在するので、その3値のときだけグループ化する。
+  const KUBUN=['先週分','前月末','稼働率'];
+  if(items.some(it=>KUBUN.includes(it['区分']))){
+    const groups={}; items.forEach(it=>{ const k=KUBUN.includes(it['区分'])?it['区分']:'その他'; (groups[k]=groups[k]||[]).push(it); });
+    const keys=[...KUBUN.filter(k=>groups[k]), ...(groups['その他']?['その他']:[])];
     keys.forEach(k=>{
-      const hd=document.createElement('div'); hd.className='mkubun'; hd.textContent=(k==='稼働率'?'稼働率':k+'報告'); grid.appendChild(hd);
+      const hd=document.createElement('div'); hd.className='mkubun'; hd.textContent=(k==='稼働率'?'稼働率':k==='その他'?'その他':k+'報告'); grid.appendChild(hd);
       groups[k].forEach(renderCell);
     });
   } else {
