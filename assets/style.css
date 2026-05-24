@@ -89,6 +89,12 @@ tbody tr.sel{background:#e3f0ff;}
 .datelist{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
 .datelist .chip{background:#e3f0ff;border:1px solid #bcd;border-radius:12px;padding:2px 8px;font-size:12px;cursor:pointer;}
 .saved-note{font-size:12px;color:var(--green);margin-left:8px;}
+/* 不足バナー（部署を開いた時に「○○の入力が必要」を目立たせる） */
+#miss-banner:empty{display:none;}
+.miss-warn{background:#fff4e5;border:1px solid #f0b870;border-left:5px solid #e8820c;color:#7a4500;border-radius:8px;padding:10px 14px;margin:4px 0 12px;font-size:14px;}
+.miss-ok{background:#eef8ea;border:1px solid #bfe0b0;border-left:5px solid var(--green);color:#2f6a18;border-radius:8px;padding:10px 14px;margin:4px 0 12px;font-size:13px;}
+.miss-list{margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;}
+.miss-chip{background:#fff;border:1px solid #f0c890;border-radius:11px;padding:1px 9px;font-size:11.5px;color:#8a5200;}
 .dept-done{color:var(--green);font-weight:bold;}
 
 /* 全画面共通フッター（所在地・powered byロゴ） */

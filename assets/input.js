@@ -47,7 +47,7 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524g')).json();
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260524h')).json();
   show('app');
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
@@ -108,6 +108,9 @@ function renderForm(){
   const form=document.getElementById('form'); form.innerHTML='';
   const inputs=items.filter(x=>x.mode==='input'), notInputs=items.filter(x=>x.mode!=='input');
 
+  // 不足バナー（この部署で未入力の必須項目を目立たせる）
+  const banner=document.createElement('div'); banner.id='miss-banner'; form.appendChild(banner);
+
   const h1=document.createElement('div'); h1.className='sec-h'; h1.textContent='① 入力が必要な項目（先週1週間の実数）'; form.appendChild(h1);
   if(!inputs.length){ const p=document.createElement('div'); p.style.cssText='color:#889;font-size:13px;padding:6px'; p.textContent='（この部署は手入力項目がありません）'; form.appendChild(p); }
   inputs.forEach(it=>{
@@ -120,7 +123,7 @@ function renderForm(){
     }else{
       const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目']; inp.placeholder='先週の実数';
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
-      inp.addEventListener('change', persistForm);
+      inp.addEventListener('change', ()=>{ persistForm(); updateMissingBanner(); });
       row.appendChild(inp);
       const u=document.createElement('span'); u.className='unit'; u.textContent=it['単位']||''; row.appendChild(u);
     }
@@ -141,6 +144,21 @@ function renderForm(){
     row.appendChild(b);
     form.appendChild(row);
   });
+  updateMissingBanner();
+}
+// この部署の未入力の必須項目を、フォーム先頭に目立つバナーで表示（入力に応じてリアルタイム更新）
+function updateMissingBanner(){
+  const el=document.getElementById('miss-banner'); if(!el) return;
+  const miss=requiredMissing();
+  if(!miss.length){
+    el.className='miss-ok';
+    el.innerHTML='✅ この部署の必須項目はすべて入力済みです。「この部署を提出」できます。';
+    return;
+  }
+  el.className='miss-warn';
+  const head=`⚠️ この部署は <b>${miss.length}件</b> の入力が必要です（提出するには全て埋めてください。0でもOK）`;
+  const list=miss.slice(0,12).map(m=>`<span class="miss-chip">${m}</span>`).join('')+(miss.length>12?` …ほか${miss.length-12}件`:'');
+  el.innerHTML=head+'<div class="miss-list">'+list+'</div>';
 }
 function buildDatelist(it){
   const wrap=document.createElement('div'); wrap.className='datelist'; wrap.dataset.item=it['項目'];
