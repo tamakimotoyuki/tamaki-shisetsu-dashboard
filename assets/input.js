@@ -36,24 +36,15 @@ function deptData(f,d){ const s=loadStore(); return s[cellKey(f,d)]||{values:{},
 function setDeptData(f,d,obj){ const s=loadStore(); s[cellKey(f,d)]=obj; saveStore(s); }
 function deptHasInput(f,d){ const dd=deptData(f,d); return Object.values(dd.values||{}).some(v=>v!=='' && v!=null) || Object.values(dd.dates||{}).some(a=>a&&a.length); }
 
-/* ---- 起動 ---- */
+/* ---- 起動（ログイン不要・入力フォームを直接表示）---- */
 async function boot(){
-  AUTH=await (await fetch('data/auth.json')).json();
-  document.getElementById('login-form').addEventListener('submit', onLogin);
-  document.getElementById('logout').addEventListener('click', ()=>{ sessionStorage.removeItem('ok'); show('login'); });
   document.getElementById('week').value=thisMonday();
   document.getElementById('week').addEventListener('change', ()=>{ buildDeptTabs(); renderForm(); });
   document.getElementById('save').addEventListener('click', ()=>{ persistForm(); flash('保存しました'); buildDeptTabs(); });
   document.getElementById('export').addEventListener('click', exportDept);
   document.getElementById('export-all').addEventListener('click', exportAll);
   document.getElementById('send').addEventListener('click', sendToServer);
-  if(sessionStorage.getItem('ok')==='1') await enter();
-}
-async function onLogin(e){
-  e.preventDefault();
-  const id=document.getElementById('uid').value.trim(), pw=document.getElementById('upw').value;
-  if(id===AUTH.id && (await sha256(pw))===AUTH.pw_sha256){ sessionStorage.setItem('ok','1'); await enter(); }
-  else document.getElementById('login-err').textContent='ID または パスワードが違います';
+  await enter();
 }
 async function enter(){
   if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json')).json();

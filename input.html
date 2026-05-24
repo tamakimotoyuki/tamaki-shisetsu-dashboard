@@ -9,30 +9,16 @@
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="stylesheet" href="assets/style.css?v=20260524b">
+<link rel="stylesheet" href="assets/style.css?v=20260524c">
 </head>
 <body>
 
-<!-- ログインゲート -->
-<section id="login" class="page active">
-  <form id="login-form" class="login-card">
-    <img class="login-logo" src="assets/logo.png" alt="たまき青空病院グループ">
-    <h1>全体会議 入力フォーム</h1>
-    <label>ID<input id="uid" autocomplete="username" required></label>
-    <label>パスワード<input id="upw" type="password" autocomplete="current-password" required></label>
-    <button type="submit">ログイン</button>
-    <p id="login-err" class="err"></p>
-  </form>
-</section>
-
-<!-- 入力画面 -->
-<section id="app" class="page">
+<!-- 入力画面（ログイン不要・職員が自部署の実数を入力するだけ） -->
+<section id="app" class="page active">
   <div id="stickyhead">
     <header class="topbar">
       <img class="topbar-logo" src="assets/logo.png" alt="たまき青空病院グループ">
       <span class="brand">全体会議 入力</span>
-      <a class="link" href="index.html" style="text-decoration:none">📊 結果表示へ</a>
-      <button id="logout" class="link">ログアウト</button>
     </header>
 
     <div class="toolbar">
@@ -63,6 +49,6 @@
   </footer>
 </section>
 
-<script src="assets/input.js?v=20260524b"></script>
+<script src="assets/input.js?v=20260524c"></script>
 </body>
 </html>
