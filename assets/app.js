@@ -39,7 +39,7 @@ const SUPPRESS_DASHBOARD=new Set([]);
 const GRAPH_HINT={
   // ★地域包括ケア病棟(60床)と地域包括医療病棟(60床)は同じ物理病棟（移行中の旧名/新名・施設台帳で確認）→同じ60床グラフ
   '一般病棟（地域包括ケア）':'地域包括ケア病棟','地域包括医療 (60床) ※毎月10日以降':'地域包括ケア病棟','療養病棟':'療養病棟',
-  '緊急入院':'入退院・救急','入退院報告':'入退院・救急','手術室':'手術室',
+  '緊急入院':'入退院・救急','手術室':'手術室',
   '放射線':'放射線部','健診':'健診センター',
   '検査':'検査部','薬剤':'薬剤部','栄養':'栄養部','リハビリ（病院）':'リハビリ部','訪問リハビリ':'リハビリ部',
   'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来','リハビリ':'リハビリ部'
@@ -88,9 +88,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525f')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525f')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525f')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525g')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525g')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525g')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -128,7 +128,8 @@ function renderDept(){
     const cell=document.createElement('div'); cell.className='mcell';
     const hasG=!!findGraphInFac(it['項目'], curFac);
     const lab=document.createElement('div'); lab.className='mlab';
-    lab.innerHTML=`<span class="mt">${it['項目']}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'');
+    lab.innerHTML=`<span class="mt">${it['項目']}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'')
+      +(it['dates']&&it['dates'].length?`<span class="mk dates">日付: ${it['dates'].join('、')}</span>`:'');
     const val=document.createElement('div'); val.className='mv';
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);

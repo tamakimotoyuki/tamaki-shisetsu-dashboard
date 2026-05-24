@@ -55,6 +55,7 @@ tbody tr.sel{background:#e3f0ff;}
 .mlab{min-width:0;}
 .mlab .mt{font-size:12.5px;line-height:1.3;}
 .mlab .mk{display:block;color:#a33;font-size:10px;line-height:1.2;}
+.mlab .mk.dates{color:#368;white-space:normal;}  /* 在支病：日付リスト（折り返し可） */
 .mcell .mv{font-weight:bold;font-size:13px;white-space:nowrap;color:#113;}
 /* 手術：先週／今週を左右2ブロックで表示（アンギオ室の内訳は字下げ） */
 .surg-wrap{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 24px;}

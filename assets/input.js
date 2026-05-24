@@ -26,6 +26,17 @@ function thisMonday(){
   return fmtLocal(d); // ローカル日付（toISOStringはUTCずれで前日になる）
 }
 function curWeek(){ return document.getElementById('week').value || thisMonday(); }
+// 週セレクトを「今週の月曜／次回の月曜」の2択に（過去週は選ばせない＝過去の修正はClaude Codeで原本修正）
+function nextMonday(){ const d=new Date(thisMonday()+'T00:00:00'); d.setDate(d.getDate()+7); return fmtLocal(d); }
+function populateWeekOptions(sel){
+  const fmtJ=iso=>{ const [y,m,d]=iso.split('-'); return `${y}/${m}/${d}`; };
+  const tw=thisMonday(), nx=nextMonday();
+  sel.innerHTML='';
+  [['今週の月曜',tw],['次回の月曜',nx]].forEach(([lab,iso])=>{
+    const o=document.createElement('option'); o.value=iso; o.textContent=`${lab}（${fmtJ(iso)}）`; sel.appendChild(o);
+  });
+  sel.value=tw;
+}
 
 /* ---- localStorage（週ごと）---- */
 function storeKey(){ return 'irakai:'+curWeek(); }
@@ -41,23 +52,54 @@ function loadSub(){ try{ return JSON.parse(localStorage.getItem(subKey()))||{}; 
 function isSubmitted(f,d){ return !!loadSub()[cellKey(f,d)]; }
 function markSubmitted(f,d){ const s=loadSub(); s[cellKey(f,d)]=new Date().toISOString().slice(0,16); localStorage.setItem(subKey(), JSON.stringify(s)); }
 
+/* ---- サーバー受領値の読み戻し（#4）：その週の受領値＋看取り等の直近1年日付を取得し、
+   空欄のみプレ表示する（自分の既入力は上書きしない）。看取り日付は前週からの引き継ぎになる。 ---- */
+async function fetchReceived(week){
+  if(!SAVE_ENDPOINT) return {};
+  try{
+    const r=await fetch(SAVE_ENDPOINT+'?week='+encodeURIComponent(week));
+    const j=await r.json().catch(()=>({}));
+    return (j&&j.ok)?(j.data||{}):{};
+  }catch(e){ return {}; }
+}
+function applyReceived(received){
+  const store=loadStore();
+  Object.keys(received||{}).forEach(k=>{
+    const sv=received[k]||{}; const cur=store[k]||{values:{},dates:{}};
+    cur.values=cur.values||{}; cur.dates=cur.dates||{};
+    // 値：現在空のものだけサーバー値で埋める（入力中/入力済は保持）
+    Object.keys(sv.values||{}).forEach(it=>{ const c=cur.values[it]; if(c===undefined||c===null||c==='') cur.values[it]=sv.values[it]; });
+    // 日付(看取り等)：現在空ならサーバーの直近1年unionで埋める＝前週からの引き継ぎ
+    Object.keys(sv.dates||{}).forEach(it=>{ const c=cur.dates[it]; if(!c||!c.length) cur.dates[it]=sv.dates[it]; });
+    store[k]=cur;
+  });
+  saveStore(store);
+}
+async function loadReceivedAndRender(label){
+  if(typeof setBusy==='function') setBusy(true, label||'サーバーから取得中…');
+  try{ applyReceived(await fetchReceived(curWeek())); }
+  finally{ if(typeof setBusy==='function') setBusy(false); }
+  buildDeptTabs(); renderForm();
+}
+
 /* ---- 起動（ログイン不要・入力フォームを直接表示）---- */
 async function boot(){
-  document.getElementById('week').value=thisMonday();
-  document.getElementById('week').addEventListener('change', ()=>{ buildDeptTabs(); renderForm(); });
+  populateWeekOptions(document.getElementById('week'));
+  document.getElementById('week').addEventListener('change', ()=>{ loadReceivedAndRender('週を切替中…'); });
   document.getElementById('save').addEventListener('click', ()=>{ persistForm(); flash('保存しました'); buildDeptTabs(); });
   document.getElementById('export').addEventListener('click', exportDept);
   document.getElementById('export-all').addEventListener('click', exportAll);
   document.getElementById('send').addEventListener('click', sendToServer);
   const sa=document.getElementById('send-all'); if(sa) sa.addEventListener('click', sendAllToServer);
-  // 緑「更新」：現在の入力を保存→再描画＆自動計算を再計算（#8）。サーバー受領値の再取得は#4で追加予定
-  const up=document.getElementById('update'); if(up) up.addEventListener('click', ()=>{ persistForm(); renderForm(); flash('再計算しました'); });
+  // 緑「更新」：現在の入力を保存→サーバー受領値を再取得して空欄に反映＋自動計算を再計算（#4/#8）
+  const up=document.getElementById('update'); if(up) up.addEventListener('click', async ()=>{ persistForm(); await loadReceivedAndRender('更新中…'); flash('サーバーの受領値を反映しました'); });
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525u')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525u')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525v')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525v')).json(); }catch(e){ RANGES={}; }
   show('app');
+  applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
   selFac(Object.keys(SCHEMA)[0]);
