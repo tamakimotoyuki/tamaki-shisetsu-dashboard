@@ -68,7 +68,13 @@ tbody tr.sel{background:#e3f0ff;}
 .btn{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:14px;}
 .btn.ghost{background:#fff;color:var(--blue);border:1px solid var(--blue);}
 .btn.green{background:var(--green);}
-.formwrap{padding:16px;max-width:880px;margin:0 auto;}
+.formwrap{padding:16px;max-width:1000px;margin:0 auto;}
+/* 広い画面では入力欄を2カラムに（透析17・健診13等のスクロールを半減）。見出し・自動項目・日付リストは全幅 */
+@media (min-width:721px){
+  #form{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-items:start;}
+  #form > *:not(.inp-row){grid-column:1/-1;}
+  #form .inp-row:has(.datelist){grid-column:1/-1;}
+}
 .sec-h{font-size:14px;color:var(--blue);margin:18px 0 8px;border-left:4px solid var(--green);padding-left:8px;}
 .sec-h.auto{color:#889;border-left-color:#ccc;}
 .inp-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-bottom:1px solid var(--line);}

@@ -52,6 +52,31 @@ async function enter(){
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(SCHEMA).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
   selFac(Object.keys(SCHEMA)[0]);
+  applyEntryMode();
+}
+// URLパラメータでの表示モード切替：
+//  ?admin=1        → 「書き出す」ボタンを表示（既定は職員に不要なので非表示）
+//  ?dept=透析&fac=… → その1部署だけ表示（職員が自分の部署に直行・全タブで迷わない）
+function applyEntryMode(){
+  const p=new URLSearchParams(location.search);
+  if(p.get('admin')!=='1'){
+    const e=document.getElementById('export'), ea=document.getElementById('export-all');
+    if(e) e.style.display='none'; if(ea) ea.style.display='none';
+  }
+  const dq=p.get('dept'); if(!dq) return;
+  const dd=decodeURIComponent(dq), fd=p.get('fac')?decodeURIComponent(p.get('fac')):null;
+  const m=(s,q)=>s===q||shortLabel(s)===q||s.includes(q)||shortLabel(s).includes(q);
+  let hit=null;
+  for(const f of Object.keys(SCHEMA)){
+    if(fd && !m(f,fd)) continue;
+    for(const d of Object.keys(SCHEMA[f])){ if(m(d,dd)){ hit={f,d}; break; } }
+    if(hit) break;
+  }
+  if(!hit) return;
+  selFac(hit.f); selDept(hit.d);
+  document.getElementById('fac-tabs').style.display='none';
+  document.getElementById('dept-tabs').style.display='none';
+  document.querySelector('.brand').textContent='入力：'+shortLabel(hit.f)+'｜'+shortLabel(hit.d);
 }
 function selFac(f){
   curFac=f;
@@ -93,7 +118,7 @@ function renderForm(){
     if(it.type==='datelist'){
       row.appendChild(buildDatelist(it));
     }else{
-      const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目'];
+      const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目']; inp.placeholder='先週の実数';
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
       inp.addEventListener('change', persistForm);
       row.appendChild(inp);
