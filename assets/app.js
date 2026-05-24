@@ -40,9 +40,18 @@ const GRAPH_HINT={
   '検査':'検査部','薬剤':'薬剤部','栄養':'栄養部','リハビリ（病院）':'リハビリ部','訪問リハビリ':'リハビリ部',
   'リハビリ強化デイケア':'リハビリ部','連携室':'連携室','外来':'外来'
 };
+// 施設キーの正規化（haifuとdashboardで表記差：スペース/（注記）/介護 等を吸収）
+function normFac(s){ return String(s).replace(/[\s　]/g,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').replace(/介護/g,''); }
+function graphsForFac(fac){
+  if(!GRAPHS) return null;
+  if(GRAPHS[fac]) return GRAPHS[fac];
+  const nf=normFac(fac);
+  for(const k in GRAPHS){ if(normFac(k)===nf) return GRAPHS[k]; }
+  return null;
+}
 // 施設内に限定してグラフを探す（全施設横断で別施設のグラフを拾わないため）
 function findGraphInFac(itemName, fac){
-  const gd=GRAPHS[fac]; if(!gd) return null;
+  const gd=graphsForFac(fac); if(!gd) return null;
   const n=norm(itemName).replace(/除透析|今月|当月|先月|前月|のべ/g,''); if(n.length<3) return null;
   for(const d in gd) for(const m in gd[d]){ const gn=norm(m).replace(/名週|件週|名月|件月|週|月|除透析|のべ/g,''); if(gn && (gn.includes(n)||n.includes(gn))) return {name:m,o:gd[d][m]}; }
   return null;
@@ -116,10 +125,15 @@ function renderDept(){
   //   GRAPH_HINTで確定対応→無ければ正規化照合。見つかればそれが完全集合（item照合はしない＝過剰/誤施設防止）。
   //   直引きが空のときだけ②同一施設内のitem照合でフォールバック。
   const found=new Map();
-  const gdepts=GRAPHS[curFac];
+  const gdepts=graphsForFac(curFac);
   if(gdepts){
-    let gk=(GRAPH_HINT[curDept] && gdepts[GRAPH_HINT[curDept]]) ? GRAPH_HINT[curDept] : matchGraphDept(curDept, Object.keys(gdepts));
-    if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); }
+    if(curDept==='全般' || Object.keys(HAIFU[curFac]).length<=1){
+      // 単一部署「全般」の施設（サテライト等）はその施設の全グラフを表示
+      for(const d in gdepts) for(const m in gdepts[d]) found.set(m, gdepts[d][m]);
+    } else {
+      const gk=(GRAPH_HINT[curDept] && gdepts[GRAPH_HINT[curDept]]) ? GRAPH_HINT[curDept] : matchGraphDept(curDept, Object.keys(gdepts));
+      if(gk){ for(const m in gdepts[gk]) found.set(m, gdepts[gk][m]); }
+    }
   }
   if(!found.size){ items.forEach(it=>{ const g=findGraphInFac(it['項目'], curFac); if(g && !found.has(g.name)) found.set(g.name, g.o); }); }
   // 複数折れ線が代替する部署は単系列ダッシュボードを出さない（透析＝合計/本館/健診センターの3系列で表示）
@@ -159,10 +173,25 @@ function buildChart(cv, g, it){
   ];
   const kn=kijunNum(it['基準']);
   if(kn!=null){ ds.push({type:'line',label:'基準('+it['基準']+')',data:labels.map(()=>kn),order:0,borderColor:'rgba(226,0,26,.5)',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false}); }
+  const yMin=computeYMin(vals, kn);  // 高止まり指標(稼働率等)は下限を上げて動きを見せる
+  const yScale=(yMin!=null)?{min:yMin,ticks:{font:{size:9}}}:{beginAtZero:true,ticks:{font:{size:9}}};
   return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
-      scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
+      scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:yScale}}});
+}
+// 高止まりデータの下限を自動調整：データ(と基準)が高い位置に固まっている時だけ下限を上げる。
+// 0近辺から始まる件数系は null を返して beginAtZero のまま。基準線が見えるよう基準も考慮。
+function computeYMin(vals, kijun){
+  const nums=vals.filter(v=>typeof v==='number' && !isNaN(v));
+  if(!nums.length) return null;
+  let mn=Math.min(...nums), mx=Math.max(...nums);
+  const lo=(kijun!=null)?Math.min(mn,kijun):mn;
+  if(lo>0 && (mx-lo) < lo){           // レンジが下限値より小さい＝高い位置に固まっている
+    const margin=Math.max(1,(mx-lo)*0.15);
+    return Math.max(0, Math.floor(lo-margin));
+  }
+  return null;
 }
 // 複数折れ線グループの解決（施設キーの空白差を吸収）→ [{title,週ラベル,系列}, ...]
 function multilineFor(fac, dep){
@@ -185,8 +214,11 @@ function buildLineChart(cv, labels, series){
       borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',
       borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true,borderDash:small?[4,3]:[]};
   });
+  // 左軸＝高止まり(稼働率等)なら下限を自動で上げる
+  const leftVals=[].concat(...entries.filter((_,i)=>!(useRight&&maxes[i]<thr)).map(([,v])=>v));
+  const yMin=computeYMin(leftVals, null);
   const scales={x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},
-    y:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};
+    y:(yMin!=null)?{min:yMin,position:'left',ticks:{font:{size:9}}}:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};
   if(useRight) scales.y1={beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}};
   return new Chart(cv,{type:'line',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
