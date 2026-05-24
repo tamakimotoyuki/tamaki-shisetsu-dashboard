@@ -173,25 +173,31 @@ function buildChart(cv, g, it){
   ];
   const kn=kijunNum(it['基準']);
   if(kn!=null){ ds.push({type:'line',label:'基準('+it['基準']+')',data:labels.map(()=>kn),order:0,borderColor:'rgba(226,0,26,.5)',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false}); }
-  const yMin=computeYMin(vals, kn);  // 高止まり指標(稼働率等)は下限を上げて動きを見せる
-  const yScale=(yMin!=null)?{min:yMin,ticks:{font:{size:9}}}:{beginAtZero:true,ticks:{font:{size:9}}};
+  const nb=niceBounds(vals, kn);  // 綺麗な下限/上限/目盛り幅（高止まり指標の動きを可視化）
+  const yScale=nb?{min:nb.min,max:nb.max,ticks:{stepSize:nb.step,font:{size:9}}}:{beginAtZero:true,ticks:{font:{size:9}}};
   return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
       plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:yScale}}});
 }
-// ★毎回、データ(と基準)の最低値ギリギリをY軸下限に検出する。
-// 最低値の少し下(レンジの5%・最小1)を下限に。0付近から始まる件数系は0始まり(null)のまま。
-// 基準線が隠れないよう基準値も下限の考慮に含める。
-function computeYMin(vals, kijun){
+// ★毎回、データ(と基準)の最低値ギリギリを綺麗な数字でY軸下限に。上限にも余白を作る。
+// 目盛り幅(step)を 1/2/5×10^n の「いい感じ」値にし、下限=最低値以下の倍数、上限=最大値超の倍数。
+// 0を避けない（最低値が0近辺なら下限0）。基準線が隠れないよう基準も範囲に含める。
+function niceBounds(vals, kijun){
   const nums=vals.filter(v=>typeof v==='number' && !isNaN(v));
   if(!nums.length) return null;
-  const mn=Math.min(...nums), mx=Math.max(...nums);
-  const lo=(kijun!=null)?Math.min(mn,kijun):mn;
-  if(lo<=0) return null;                       // 0や負を含む→0始まり
-  const margin=Math.max(1,(mx-lo)*0.05);       // 最低値ギリギリ（わずかに下）
-  const ymin=Math.floor(lo-margin);
-  return ymin>0 ? ymin : null;                 // 下限が0以下になるなら0始まり
+  let lo=Math.min(...nums), hi=Math.max(...nums);
+  if(kijun!=null){ lo=Math.min(lo,kijun); hi=Math.max(hi,kijun); }
+  if(hi===lo) hi=lo+1;
+  const rawStep=(hi-lo)/4;
+  const mag=Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm=rawStep/mag;
+  const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  let min=Math.floor(lo/step)*step;
+  let max=Math.ceil(hi/step)*step;
+  if(max<=hi) max+=step;                 // 上限に必ず余白（上限ギリギリ回避）
+  if(min<0) min=0;
+  return {min, max, step};
 }
 // 複数折れ線グループの解決（施設キーの空白差を吸収）→ [{title,週ラベル,系列}, ...]
 function multilineFor(fac, dep){
@@ -214,11 +220,11 @@ function buildLineChart(cv, labels, series){
       borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',
       borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true,borderDash:small?[4,3]:[]};
   });
-  // 左軸＝高止まり(稼働率等)なら下限を自動で上げる
+  // 左軸＝綺麗な下限/上限/目盛り
   const leftVals=[].concat(...entries.filter((_,i)=>!(useRight&&maxes[i]<thr)).map(([,v])=>v));
-  const yMin=computeYMin(leftVals, null);
+  const nb=niceBounds(leftVals, null);
   const scales={x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},
-    y:(yMin!=null)?{min:yMin,position:'left',ticks:{font:{size:9}}}:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};
+    y:nb?{min:nb.min,max:nb.max,position:'left',ticks:{stepSize:nb.step,font:{size:9}}}:{beginAtZero:true,position:'left',ticks:{font:{size:9}}}};
   if(useRight) scales.y1={beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9}}};
   return new Chart(cv,{type:'line',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
