@@ -32,6 +32,25 @@ const SHORT={
   'リハビリ（病院）':'リハビリ'
 };
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
+// 配布資料の項目名を見やすく：「ラベル（A、B、…）」で（）内に top-level「、」がある時、A/Bを字下げ改行。
+// 例 契約者数（医療7名(内自院2)、介護56名(内自院43)）→ 契約者数／　医療7名（内自院2）／　介護56名（内自院43）
+function fmtMetricName(name){
+  const m=String(name).match(/^(.+?)（(.+)）\s*$/);
+  if(m){
+    let depth=0, buf='', parts=[];
+    for(const ch of m[2]){
+      if(ch==='('||ch==='（') depth++;
+      else if(ch===')'||ch==='）') depth--;
+      if(ch==='、' && depth===0){ parts.push(buf); buf=''; } else buf+=ch;
+    }
+    parts.push(buf);
+    if(parts.length>=2){   // 複数項目を内包＝多行化（単一注記はそのまま）
+      const subs=parts.map(p=>`<span style="display:block;padding-left:1.1em;font-size:.9em;color:#555;font-weight:400">${p.trim().replace(/\(/g,'（').replace(/\)/g,'）')}</span>`).join('');
+      return `${m[1]}${subs}`;
+    }
+  }
+  return String(name);
+}
 // 複数折れ線グラフが単系列ダッシュボードを代替する部署（単系列は出さない）
 // ※透析は2026-05-25に全体/本館/センターの単系列3枚(棒+3か月平均)へ移行＝抑制しない
 // ※放射線は総件数/MRI/CTを個別グラフ(復元)＋一般撮影/透視/マンモ/骨密度だけ一括折れ線＝抑制しない（重複なし）
@@ -91,9 +110,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525p')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525p')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525p')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525q')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525q')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525q')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -131,7 +150,7 @@ function renderDept(){
     const cell=document.createElement('div'); cell.className='mcell';
     const hasG=!!findGraphInFac(it['項目'], curFac);
     const lab=document.createElement('div'); lab.className='mlab';
-    lab.innerHTML=`<span class="mt">${it['項目']}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'')
+    lab.innerHTML=`<span class="mt">${fmtMetricName(it['項目'])}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'')
       +(it['dates']&&it['dates'].length?`<span class="mk dates">日付: ${it['dates'].join('、')}</span>`:'');
     const val=document.createElement('div'); val.className='mv';
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
@@ -219,6 +238,12 @@ function renderDeptCharts(items){
     const rank=s=> s.kind==='bar'?0 : (s.kind==='kenshincum'?1 : 2);
     specs.sort((a,b)=>rank(a)-rank(b));
   }
+  // ヘルパーステーション：総数を先頭ルール（のべ訪問総数→訪問内訳→総単位数→平均）。総単位数が最下部にならないように。
+  if(curDept==='ヘルパーステーション'){
+    const HORDER=['のべ訪問総数','ヘルパー訪問内訳','総単位数','平均訪問件数'];
+    const rk=t=>{ for(let i=0;i<HORDER.length;i++) if(String(t).includes(HORDER[i])) return i; return 99; };
+    specs.sort((a,b)=>rk(a.title)-rk(b.title));
+  }
   specs.forEach(s=>{
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=s.title; card.appendChild(h);
@@ -261,7 +286,10 @@ function buildChart(cv, g, it){
   const unit=(it&&it['単位'])||'', kj=String((it&&it['基準'])||''), nm=((it&&it['項目'])||'')+'|'+(g.name||'');
   const isPct=/[%％]/.test(unit)||/[%％]/.test(kj)||/稼働率|復帰率|占床率|病床利用率|出席率|達成率/.test(nm);
   const dataMax=Math.max(...vals.filter(v=>typeof v==='number'&&!isNaN(v)));
-  const capMax=(isPct && dataMax>=50)?100:null;   // 看護必要度割合(~30%)等の小さい率は対象外
+  // 入居者数・入所者数など「定員が上限」のcount系は Y軸上限=定員（グラフ基準の値）に固定（空き＝余白で見える）
+  const gcap=(o.基準 && typeof o.基準.値==='number')?o.基準.値:null;
+  const isCapCount=(gcap!=null && !isPct && /入居者数|入所者数|入居|入所/.test(g.name||''));
+  const capMax=(isPct && dataMax>=50)?100:(isCapCount ? gcap : null);   // 看護必要度割合(~30%)等の小さい率は対象外
   const nb=niceBounds(vals, kn, capMax);  // 綺麗な下限/上限/目盛り幅（高止まり指標の動きを可視化）
   const yScale=nb?{min:nb.min,max:nb.max,ticks:{stepSize:nb.step,font:{size:9}}}:{beginAtZero:true,ticks:{font:{size:9}}};
   return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
