@@ -18,6 +18,9 @@ async function onLogin(e){
   else document.getElementById('login-err').textContent='ID または パスワードが違います';
 }
 function show(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+// 追従ヘッダーの高さを CSS変数 --navh に反映（左ペインstickyのtop計算に使う）
+function fixNav(){ const h=document.getElementById('stickyhead'); if(h) document.documentElement.style.setProperty('--navh', h.offsetHeight+'px'); }
+window.addEventListener('resize', ()=>{ clearTimeout(window._nvT); window._nvT=setTimeout(fixNav,120); });
 
 const norm=s=>String(s).replace(/[\s　（）()／\/、%％・,，。:：]/g,'');
 // タブ表示名を短く（データキーは変えない）。()注記は除去、衝突するものだけ短い識別子を残す
@@ -92,6 +95,7 @@ function selFac(f){
   const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
   Object.keys(HAIFU[f]).forEach((d)=>{ const b=document.createElement('button'); b.textContent=shortLabel(d); b.dataset.key=d; b.onclick=()=>selDept(d); dt.appendChild(b); });
   selDept(Object.keys(HAIFU[f])[0]);
+  fixNav();  // 部署タブの行数が施設で変わる→追従ヘッダー高さを再計算
 }
 function selDept(d){
   curDept=d;
@@ -218,7 +222,7 @@ function buildLineChart(cv, labels, series){
     const small=useRight && maxes[i]<thr;
     return {label:name+(small?'（右軸）':''),data:vals,yAxisID:small?'y1':'y',
       borderColor:PALETTE[i%PALETTE.length],backgroundColor:'transparent',
-      borderWidth:1.5,pointRadius:0,tension:.2,spanGaps:true,borderDash:small?[4,3]:[]};
+      borderWidth:1.5,pointRadius:0,cubicInterpolationMode:'monotone',tension:.4,spanGaps:true,borderDash:small?[4,3]:[]};
   });
   // 左軸＝綺麗な下限/上限/目盛り
   const leftVals=[].concat(...entries.filter((_,i)=>!(useRight&&maxes[i]<thr)).map(([,v])=>v));

@@ -27,15 +27,17 @@
 
 <!-- ダッシュボード -->
 <section id="dash" class="page">
-  <header class="topbar">
-    <img class="topbar-logo" src="assets/logo.png" alt="たまき青空病院グループ">
-    <span class="brand">全体会議資料</span>
-    <span id="week-label" class="week"></span>
-    <a class="link" href="input.html" style="text-decoration:none">✏️ 入力へ</a>
-    <button id="logout" class="link">ログアウト</button>
-  </header>
-  <nav id="fac-tabs" class="tabs"></nav>
-  <nav id="dept-tabs" class="tabs sub"></nav>
+  <div id="stickyhead">
+    <header class="topbar">
+      <img class="topbar-logo" src="assets/logo.png" alt="たまき青空病院グループ">
+      <span class="brand">全体会議資料</span>
+      <span id="week-label" class="week"></span>
+      <a class="link" href="input.html" style="text-decoration:none">✏️ 入力へ</a>
+      <button id="logout" class="link">ログアウト</button>
+    </header>
+    <nav id="fac-tabs" class="tabs"></nav>
+    <nav id="dept-tabs" class="tabs sub"></nav>
+  </div>
   <div class="split">
     <div class="left">
       <h2 id="table-title">配布資料（最新週）</h2>
@@ -46,6 +48,13 @@
       <div id="charts" class="charts"></div>
     </div>
   </div>
+  <footer class="site-footer">
+    <span class="site-footer__location">たまき青空病院グループ</span>
+    <span class="site-footer__powered">
+      powered by
+      <img src="assets/logo.png" alt="たまき青空病院グループ" class="site-footer__logo">
+    </span>
+  </footer>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
