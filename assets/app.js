@@ -177,7 +177,12 @@ function buildChart(cv, g, it){
   ];
   const kn=kijunNum(it['基準']);
   if(kn!=null){ ds.push({type:'line',label:'基準('+it['基準']+')',data:labels.map(()=>kn),order:0,borderColor:'rgba(226,0,26,.5)',borderDash:[5,4],borderWidth:1,pointRadius:0,fill:false}); }
-  const nb=niceBounds(vals, kn);  // 綺麗な下限/上限/目盛り幅（高止まり指標の動きを可視化）
+  // 稼働率・復帰率など「100%が上限」の指標はグラフ上限も100%に固定（高止まりの余白で天井が見える）
+  const unit=(it&&it['単位'])||'', kj=String((it&&it['基準'])||''), nm=((it&&it['項目'])||'')+'|'+(g.name||'');
+  const isPct=/[%％]/.test(unit)||/[%％]/.test(kj)||/稼働率|復帰率|占床率|病床利用率|出席率|達成率/.test(nm);
+  const dataMax=Math.max(...vals.filter(v=>typeof v==='number'&&!isNaN(v)));
+  const capMax=(isPct && dataMax>=50)?100:null;   // 看護必要度割合(~30%)等の小さい率は対象外
+  const nb=niceBounds(vals, kn, capMax);  // 綺麗な下限/上限/目盛り幅（高止まり指標の動きを可視化）
   const yScale=nb?{min:nb.min,max:nb.max,ticks:{stepSize:nb.step,font:{size:9}}}:{beginAtZero:true,ticks:{font:{size:9}}};
   return new Chart(cv,{type:'bar',data:{labels,datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,animation:false,
@@ -187,16 +192,20 @@ function buildChart(cv, g, it){
 // ★毎回、データ(と基準)の最低値ギリギリを綺麗な数字でY軸下限に。上限にも余白を作る。
 // 目盛り幅(step)を 1/2/5×10^n の「いい感じ」値にし、下限=最低値以下の倍数、上限=最大値超の倍数。
 // 0を避けない（最低値が0近辺なら下限0）。基準線が隠れないよう基準も範囲に含める。
-function niceBounds(vals, kijun){
+function niceBounds(vals, kijun, capMax){
   const nums=vals.filter(v=>typeof v==='number' && !isNaN(v));
   if(!nums.length) return null;
   let lo=Math.min(...nums), hi=Math.max(...nums);
   if(kijun!=null){ lo=Math.min(lo,kijun); hi=Math.max(hi,kijun); }
   if(hi===lo) hi=lo+1;
-  const rawStep=(hi-lo)/4;
-  const mag=Math.pow(10, Math.floor(Math.log10(rawStep)));
-  const norm=rawStep/mag;
-  const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const niceStep=range=>{ const mag=Math.pow(10,Math.floor(Math.log10(range/4))); const n=(range/4)/mag; return (n<1.5?1:n<3?2:n<7?5:10)*mag; };
+  // capMax指定（稼働率等の100%上限）かつ実データが上限以内なら、上限を固定して下限だけ綺麗に丸める
+  if(capMax!=null && hi<=capMax){
+    const step=niceStep(capMax-lo);
+    let min=Math.floor(lo/step)*step; if(min<0) min=0;
+    return {min, max:capMax, step};
+  }
+  const step=niceStep(hi-lo);
   let min=Math.floor(lo/step)*step;
   let max=Math.ceil(hi/step)*step;
   if(max<=hi) max+=step;                 // 上限に必ず余白（上限ギリギリ回避）
