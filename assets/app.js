@@ -33,7 +33,8 @@ const SHORT={
 };
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
 // 複数折れ線グラフが単系列ダッシュボードを代替する部署（単系列は出さない）
-const SUPPRESS_DASHBOARD=new Set(['透析']);
+// ※透析は2026-05-25に全体/本館/センターの単系列3枚(棒+3か月平均)へ移行＝抑制しない
+const SUPPRESS_DASHBOARD=new Set([]);
 // 病院の部署→dashboardのグラフ部署キー（確定マッピング・誤施設マッチ防止）
 const GRAPH_HINT={
   // ★地域包括ケア病棟(60床)と地域包括医療病棟(60床)は同じ物理病棟（移行中の旧名/新名・施設台帳で確認）→同じ60床グラフ
@@ -79,9 +80,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525c')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525c')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525c')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525d')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525d')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525d')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -118,11 +119,12 @@ function renderDept(){
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   };
-  // 手術（先週の手術／今週の手術予定）＝左右2ブロックで個別行を表示（OP室/外来/アンギオ室└内訳）
-  const SURG=['先週の手術','今週の手術予定'];
-  if(items.some(it=>SURG.includes(it['区分']))){
+  // 区分ブロック表示（左右に並べる）：手術＝先週/今週、透析＝本館/センター
+  const BLOCKS=['先週の手術','今週の手術予定','本館透析室','センター透析室'];
+  if(items.some(it=>BLOCKS.includes(it['区分']))){
+    const present=BLOCKS.filter(k=>items.some(it=>it['区分']===k));
     const wrap=document.createElement('div'); wrap.className='surg-wrap';
-    SURG.forEach(kbn=>{
+    present.forEach(kbn=>{
       const col=document.createElement('div'); col.className='surg-col';
       const gi=items.filter(it=>it['区分']===kbn); if(!gi.length) return;
       const sum=gi.find(it=>it['合計']);
