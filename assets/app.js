@@ -180,18 +180,18 @@ function buildChart(cv, g, it){
       plugins:{legend:{display:true,labels:{boxWidth:12,font:{size:10}}}},
       scales:{x:{ticks:{maxTicksLimit:12,autoSkip:true,font:{size:9}}},y:yScale}}});
 }
-// 高止まりデータの下限を自動調整：データ(と基準)が高い位置に固まっている時だけ下限を上げる。
-// 0近辺から始まる件数系は null を返して beginAtZero のまま。基準線が見えるよう基準も考慮。
+// ★毎回、データ(と基準)の最低値ギリギリをY軸下限に検出する。
+// 最低値の少し下(レンジの5%・最小1)を下限に。0付近から始まる件数系は0始まり(null)のまま。
+// 基準線が隠れないよう基準値も下限の考慮に含める。
 function computeYMin(vals, kijun){
   const nums=vals.filter(v=>typeof v==='number' && !isNaN(v));
   if(!nums.length) return null;
-  let mn=Math.min(...nums), mx=Math.max(...nums);
+  const mn=Math.min(...nums), mx=Math.max(...nums);
   const lo=(kijun!=null)?Math.min(mn,kijun):mn;
-  if(lo>0 && (mx-lo) < lo){           // レンジが下限値より小さい＝高い位置に固まっている
-    const margin=Math.max(1,(mx-lo)*0.15);
-    return Math.max(0, Math.floor(lo-margin));
-  }
-  return null;
+  if(lo<=0) return null;                       // 0や負を含む→0始まり
+  const margin=Math.max(1,(mx-lo)*0.05);       // 最低値ギリギリ（わずかに下）
+  const ymin=Math.floor(lo-margin);
+  return ymin>0 ? ymin : null;                 // 下限が0以下になるなら0始まり
 }
 // 複数折れ線グループの解決（施設キーの空白差を吸収）→ [{title,週ラベル,系列}, ...]
 function multilineFor(fac, dep){
