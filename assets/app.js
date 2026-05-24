@@ -34,6 +34,7 @@ const SHORT={
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
 // 複数折れ線グラフが単系列ダッシュボードを代替する部署（単系列は出さない）
 // ※透析は2026-05-25に全体/本館/センターの単系列3枚(棒+3か月平均)へ移行＝抑制しない
+// ※放射線は総件数/MRI/CTを個別グラフ(復元)＋一般撮影/透視/マンモ/骨密度だけ一括折れ線＝抑制しない（重複なし）
 const SUPPRESS_DASHBOARD=new Set([]);
 // 病院の部署→dashboardのグラフ部署キー（確定マッピング・誤施設マッチ防止）
 const GRAPH_HINT={
@@ -88,9 +89,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525h')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525h')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525h')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525l')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525l')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525l')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
@@ -207,6 +208,8 @@ function renderDeptCharts(items){
   }));
   found.forEach((o,name)=>{ if(!mlTitles.has(norm(name))) specs.push({kind:'bar', title:name, name, o}); });
   if(DEPT_GROUPS[curDept]) specs.sort((a,b)=>rehabRank(a.title)-rehabRank(b.title));  // 統合タブは指定順
+  // 放射線：個別グラフ(総件数→MRI→CT)を先に、その他項目の一括折れ線を後に（sortは安定＝同種内の順は維持）
+  if(curDept==='放射線') specs.sort((a,b)=>(a.kind==='bar'?0:1)-(b.kind==='bar'?0:1));
   specs.forEach(s=>{
     const card=document.createElement('div'); card.className='chartcard';
     const h=document.createElement('h3'); h.textContent=s.title; card.appendChild(h);
