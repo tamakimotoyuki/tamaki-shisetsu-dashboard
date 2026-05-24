@@ -80,9 +80,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525d')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525d')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525d')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525e')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525e')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525e')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
