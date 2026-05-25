@@ -102,6 +102,17 @@ function gGraphRank(spec){
   if(/のべ|総数|総件数|総単位数|総訪問|合計|検査総|受診者数|利用者数|入所者数|入居者数|訪問総数|患者数|総人数/.test(t)) return 0;  // 総数＝先頭
   return 3;                                                                                          // その他の個別指標
 }
+// グラフタイトルの表示用短縮：先頭の施設名・部署名（タブで分かる冗長分）を1回だけ落とす。データ・並び替えキーは不変（表示のみ）。
+function shortTitle(t){
+  var s=String(t||'');
+  var PREF=['サービス付き高齢者向け住宅　阿波っ子','ショートステイ　阿波っ子','デイサービス　阿波っ子','ヘルパーステーション　阿波っ子',
+   'たまき青空居宅介護支援事業所','藍住たまき青空居宅介護支援事業所',
+   'リハビリテーション部','放射線部','検査部','薬剤部','栄養部','連携室','健診センター',
+   '老健フェニックス','特養　あおぞら','特養あおぞら','ハート徳島','デイケアあいそら','GHふれあい','GHフェニックス',
+   'たまき青空　訪問看護','まごころ　訪問介護','たまき青空'];
+  for(var i=0;i<PREF.length;i++){ if(s.indexOf(PREF[i])===0){ s=s.slice(PREF[i].length).replace(/^[\s　]+/,''); break; } }
+  return s;
+}
 // 施設キーの正規化（haifuとdashboardで表記差：スペース/（注記）/介護 等を吸収）
 function normFac(s){ return String(s).replace(/[\s　]/g,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').replace(/介護/g,''); }
 function graphsForFac(fac){
@@ -138,9 +149,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zs')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zs')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zs')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zt')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zt')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zt')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -179,7 +190,7 @@ function renderDept(){
     const cell=document.createElement('div'); cell.className='mcell';
     const hasG=!!findGraphInFac(it['項目'], curFac);
     const lab=document.createElement('div'); lab.className='mlab';
-    lab.innerHTML=`<span class="mt">${fmtMetricName(it['項目'])}${hasG?' 📈':''}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'')
+    lab.innerHTML=`<span class="mt">${fmtMetricName(it['項目'])}</span>`+(it['基準']?`<span class="mk">基準: ${it['基準']}</span>`:'')
       +(it['dates']&&it['dates'].length?`<span class="mk dates">日付: ${it['dates'].join('、')}</span>`:'');
     const val=document.createElement('div'); val.className='mv';
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
@@ -267,7 +278,7 @@ function renderDeptCharts(items){
   else specs.sort((a,b)=>gGraphRank(a)-gGraphRank(b));
   specs.forEach(s=>{
     const card=document.createElement('div'); card.className='chartcard';
-    const h=document.createElement('h3'); h.textContent=s.title; card.appendChild(h);
+    const h=document.createElement('h3'); h.textContent=shortTitle(s.title); card.appendChild(h);
     if(s.kind==='kenshincum'){   // 年度別ビュー＋単月/累積トグル
       const tg=document.createElement('div'); tg.style.cssText='display:flex;gap:6px;margin:0 0 6px';
       const box=document.createElement('div'); box.className='chartbox'; box.style.height='320px';
