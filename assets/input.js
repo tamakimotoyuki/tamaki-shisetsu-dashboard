@@ -96,8 +96,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zq')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zq')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zr')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zr')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
@@ -195,16 +195,22 @@ function renderForm(){
 
   const h1=document.createElement('div'); h1.className='sec-h'; h1.textContent='① 入力が必要な項目（先週1週間の実数）'; form.appendChild(h1);
   if(!inputs.length){ const p=document.createElement('div'); p.style.cssText='color:#889;font-size:13px;padding:6px'; p.textContent='（この部署は手入力項目がありません）'; form.appendChild(p); }
+  const isMonthly=(it)=> it['周期']==='月次' || it['区分']==='前月末';  // 周期(新)優先・旧区分も後方互換
   const renderInputRow=(it)=>{
-    const row=document.createElement('div'); row.className='inp-row';
+    const mo=isMonthly(it);
+    const row=document.createElement('div'); row.className='inp-row'+(mo?' mo-row':' wk-row');
     const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=it['項目'];
+    // 月1回の項目には「前月分」バッジ（週1回は薄赤セルで区別＝バッジなし）
+    if(mo){ const b=document.createElement('span'); b.className='cyc-badge mo'; b.textContent='前月分'; lbl.appendChild(b); }
     if(it['基準']){ const k=document.createElement('span'); k.className='kij'; k.textContent='基準:'+it['基準']; lbl.appendChild(k); }
     row.appendChild(lbl);
     if(it.type==='datelist'){
       row.appendChild(buildDatelist(it));
     }else{
-      const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目']; inp.placeholder='先週の実数';
-      if(it['区分']==='前月末') inp.dataset.optional='1';  // 前月末は必須でない＝薄赤対象外
+      const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目'];
+      inp.placeholder=mo?'前月分':'先週の実数';
+      inp.classList.add(mo?'mo-cell':'wk-cell');     // 月次=薄緑／週次=薄赤
+      if(mo) inp.dataset.optional='1';               // 月次は毎週の提出では必須にしない＝薄赤(miss)対象外
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
       const warn=document.createElement('div'); warn.className='val-warn';
       const chk=()=>{ warn.textContent=anomalyMsg(it['項目'], inp.value, it['単位']); };
@@ -216,15 +222,11 @@ function renderForm(){
     }
     form.appendChild(row);
   };
-  // 病棟は先週分(毎週)/前月末(毎月10日以降)に分ける。区分が無い部署は従来どおり一覧
-  if(inputs.some(it=>it['区分'])){
-    const wk=inputs.filter(it=>it['区分']!=='前月末');  // 先週分＋区分なし
-    const mo=inputs.filter(it=>it['区分']==='前月末');
-    if(wk.length){ const s=document.createElement('div'); s.className='sub-h'; s.textContent='■ 先週分（毎週入力）'; form.appendChild(s); wk.forEach(renderInputRow); }
-    if(mo.length){ const s=document.createElement('div'); s.className='sub-h mo'; s.textContent='■ 前月末報告（毎月10日以降に入力／毎週は不要）'; form.appendChild(s); mo.forEach(renderInputRow); }
-  } else {
-    inputs.forEach(renderInputRow);
-  }
+  // 週次（薄赤）を先に、月次（薄緑「前月分」）を後に。見出し行は作らず色とバッジで区別（外来での田蒔さん指示）。
+  const wkItems=inputs.filter(it=>!isMonthly(it));
+  const moItems=inputs.filter(it=>isMonthly(it));
+  wkItems.forEach(renderInputRow);
+  moItems.forEach(renderInputRow);
 
   const h2=document.createElement('div'); h2.className='sec-h auto'; h2.textContent='② 自動計算・入力不要（グレーの項目は入力できません）'; form.appendChild(h2);
   notInputs.forEach(it=>{
@@ -265,7 +267,7 @@ function updateMissingBanner(){
     return;
   }
   el.className='miss-warn';
-  const head=`⚠️ この部署は <b>${miss.length}件</b> の入力が必要です（提出するには全て埋めてください。0でもOK）`;
+  const head=`未入力 <b>${miss.length}件</b>（今週分があれば入力。無ければ空欄のまま提出してOK・0でもOK）`;
   const list=miss.slice(0,12).map(m=>`<span class="miss-chip">${m}</span>`).join('')+(miss.length>12?` …ほか${miss.length-12}件`:'');
   el.innerHTML=head+'<div class="miss-list">'+list+'</div>';
 }
@@ -352,14 +354,14 @@ function requiredMissing(){
   });
   return miss;
 }
-// ★提出（サーバー保存）：必須項目が全部埋まっていなければ提出不可。一時保存は別途いつでも可。
+// ★提出（サーバー保存）：未入力があっても提出は可能（ロック解除）。確認だけ出して、空欄は未入力として送る。
 async function sendToServer(){
   persistForm();
   if(!SAVE_ENDPOINT){ alert('サーバー保存先が未設定です。当面は「書き出す」でJSONを保存して送ってください。'); return; }
   const miss=requiredMissing();
   if(miss.length){
-    alert(`未入力の必須項目が ${miss.length}件 あるため提出できません。\n（0でもよいので数値を入れてください。途中なら「一時保存」を使ってください）\n\n・`+miss.slice(0,20).join('\n・')+(miss.length>20?'\n・…ほか':''));
-    return;
+    // 提出はブロックしない（全部埋めないと出せないと提出不能になるため）。空欄があることだけ確認する。
+    if(!confirm(`未入力が ${miss.length}件 あります。このまま提出しますか？\n（空欄は未入力として送られます。今週分が無い項目はそのままでOK。途中なら「一時保存」も使えます）`)) return;
   }
   // この部署のみ提出
   const payload={week:curWeek(), data:{[cellKey(curFac,curDept)]:deptData(curFac,curDept)}};
