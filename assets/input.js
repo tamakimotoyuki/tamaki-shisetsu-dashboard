@@ -96,8 +96,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zv')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zv')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zw')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zw')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
@@ -139,9 +139,9 @@ function buildDeptTabs(){
   const dt=document.getElementById('dept-tabs'); dt.innerHTML='';
   Object.keys(SCHEMA[curFac]).forEach(d=>{
     const b=document.createElement('button');
-    const mark = isSubmitted(curFac,d) ? ' ✅提出済' : (deptHasInput(curFac,d) ? ' ✓入力' : '');
-    b.textContent=shortLabel(d)+mark;
-    if(isSubmitted(curFac,d)) b.classList.add('submitted');
+    b.textContent=shortLabel(d);                                       // 状態はテキストでなく色で示す（ヘッダーを横長にしない）
+    if(isSubmitted(curFac,d)) b.classList.add('submitted');            // 提出済＝緑
+    else if(deptHasInput(curFac,d)) b.classList.add('has-input');      // 入力中＝薄黄
     b.dataset.dept=d;
     b.onclick=()=>selDept(d); dt.appendChild(b);
     if(d===curDept) b.classList.add('active');
@@ -209,13 +209,15 @@ function renderForm(){
     }else{
       const inp=document.createElement('input'); inp.type='number'; inp.step='any'; inp.dataset.item=it['項目'];
       inp.placeholder=mo?'前月分':'先週の実数';
-      inp.classList.add(mo?'mo-cell':'wk-cell');     // 月次=薄緑／週次=薄赤
-      if(mo) inp.dataset.optional='1';               // 月次は毎週の提出では必須にしない＝薄赤(miss)対象外
+      inp.classList.add(mo?'mo-cell':'wk-cell');     // 空欄時の色：週次=薄赤／月次=薄黄
+      if(mo) inp.dataset.optional='1';               // 月次は毎週の提出では必須にしない（miss対象外）
       inp.value=(dd.values&&dd.values[it['項目']]!=null)?dd.values[it['項目']]:'';
+      const setFilled=()=>inp.classList.toggle('filled', inp.value!=='' && inp.value!=null);  // 入力済み＝薄緑
+      setFilled();
       const warn=document.createElement('div'); warn.className='val-warn';
       const chk=()=>{ warn.textContent=anomalyMsg(it['項目'], inp.value, it['単位']); };
       inp.addEventListener('change', ()=>{ persistForm(); });
-      inp.addEventListener('input', ()=>{ chk(); updateMissingBanner(); refreshAutoValues(); });
+      inp.addEventListener('input', ()=>{ setFilled(); chk(); updateMissingBanner(); refreshAutoValues(); });
       row.appendChild(inp);
       const u=document.createElement('span'); u.className='unit'; u.textContent=it['単位']||''; row.appendChild(u);
       row.appendChild(warn); chk();
