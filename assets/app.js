@@ -159,9 +159,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zu')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zu')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zu')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zv')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zv')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zv')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -206,6 +206,17 @@ function renderDept(){
     val.textContent=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
     cell.appendChild(lab); cell.appendChild(val); grid.appendChild(cell);
   };
+  // 栄養：国府／藍住を緑見出しで明確に仕切る（項目名の接頭辞で判定・接頭辞は見出しに出すので項目名から除去）
+  if(curDept==='栄養'){
+    const grp={'国府':[],'藍住':[],'その他':[]};
+    items.forEach(it=>{ const n=it['項目']||''; grp[n.startsWith('国府')?'国府':n.startsWith('藍住')?'藍住':'その他'].push(it); });
+    ['国府','藍住','その他'].forEach(k=>{
+      if(!grp[k].length) return;
+      const hd=document.createElement('div'); hd.className='mkubun'; hd.textContent=k; grid.appendChild(hd);
+      grp[k].forEach(it=>{ const it2=(k==='その他')?it:Object.assign({},it,{'項目':(it['項目']||'').replace(/^(国府|藍住)[\s　]*/,'')}); renderCell(it2); });
+    });
+    renderDeptCharts(items); return;
+  }
   // 区分ブロック表示（左右に並べる）：手術＝先週/今週、透析＝本館/センター
   const BLOCKS=['先週の手術','今週の手術予定','本館透析室','センター透析室','リハビリ','リハビリ強化デイケア','訪問リハビリ','その他'];
   if(items.some(it=>BLOCKS.includes(it['区分']))){
