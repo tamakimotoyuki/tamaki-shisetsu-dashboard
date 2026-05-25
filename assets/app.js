@@ -138,11 +138,12 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525z3')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525z3')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525z3')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525z4')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525z4')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525z4')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
-  let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
+  // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
+  let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
   document.getElementById('week-label').textContent='最新: '+latest;
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
   Object.keys(HAIFU).forEach((f)=>{ const b=document.createElement('button'); b.textContent=shortLabel(f); b.dataset.key=f; b.onclick=()=>selFac(f); ft.appendChild(b); });
