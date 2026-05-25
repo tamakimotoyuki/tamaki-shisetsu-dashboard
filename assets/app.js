@@ -44,22 +44,32 @@ function fmtMetricName(name){
     if(ch==='（'){ if(depth===0) start=i; depth++; }
     else if(ch==='）'){ if(depth>0){ depth--; if(depth===0) groups.push([start,i]); } }
   }
-  let bg=null;                                            // 内訳＝top-level「、」で2個以上に割れる最後の（）
+  let bg=null;                                            // 内訳＝top-level区切りで2個以上に割れる最後の（）
   for(const [a,b] of groups){
-    let d=0, buf='', parts=[];
-    for(const ch of s.slice(a+1,b)){
+    const inner=s.slice(a+1,b);
+    let d=0, buf='', parts=[];                             // ①「、」区切り優先
+    for(const ch of inner){
       if(ch==='('||ch==='（') d++; else if(ch===')'||ch==='）') d--;
       if(ch==='、' && d===0){ parts.push(buf); buf=''; } else buf+=ch;
     }
     parts.push(buf);
+    if(parts.length<2){                                   // ②「、」で割れない時は「/」区切り（栄養の 外来87/入院0/… 等）
+      let d2=0, b2='', p2=[];                              //   分数(10/12)・単位(件/人/日)を誤分割しないため ≥3個 かつ 各部に"文字+数字"
+      for(const ch of inner){
+        if(ch==='('||ch==='（') d2++; else if(ch===')'||ch==='）') d2--;
+        if(ch==='/' && d2===0){ p2.push(b2); b2=''; } else b2+=ch;
+      }
+      p2.push(b2);
+      if(p2.length>=3 && p2.every(x=>/\d/.test(x) && /[^\d\s.\/]/.test(x))) parts=p2;
+    }
     if(parts.length>=2) bg={a,b,parts};
   }
   if(!bg) return s;                                       // 内訳なし＝そのまま
-  const head=(s.slice(0,bg.a)+s.slice(bg.b+1)).trim();    // 内訳以外＝見出し（修飾 のべ/前月計 は残す）
+  const head=(s.slice(0,bg.a)+s.slice(bg.b+1)).trim();    // 内訳以外＝見出し（修飾 のべ/前月計・国府/藍住 は残す）
   const subs=bg.parts.map(p=>{
     const txt=p.trim().replace(/\(/g,'（').replace(/\)/g,'）')
-                      .replace(/(\d+(?:[\/.]\d+)?)/g,'<b style="color:#333">$1</b>');  // 数値を強調
-    return `<span style="display:block;padding-left:1.2em;font-size:.86em;color:#777;line-height:1.5;text-indent:-.7em">・${txt}</span>`;
+                      .replace(/(\d+(?:[\/.]\d+)?)/g,'<b style="color:#111">$1</b>');  // 数値を強調
+    return `<span style="display:block;padding-left:1.1em;font-size:1em;color:#445;line-height:1.45;text-indent:-.7em">・${txt}</span>`;
   }).join('');
   return `<span>${head}</span>${subs}`;
 }
@@ -149,9 +159,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zt')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zt')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zt')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525zu')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525zu')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525zu')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
