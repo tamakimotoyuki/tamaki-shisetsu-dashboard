@@ -32,24 +32,36 @@ const SHORT={
   'リハビリ（病院）':'リハビリ'
 };
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
-// 配布資料の項目名を見やすく：「ラベル（A、B、…）」で（）内に top-level「、」がある時、A/Bを字下げ改行。
-// 例 契約者数（医療7名(内自院2)、介護56名(内自院43)）→ 契約者数／　医療7名（内自院2）／　介護56名（内自院43）
+// 配布資料の項目名を見やすく：内訳（「、」区切りの複数項目を含む（））を字下げの箇条書きに。
+// ★複合カッコ対応：「入院（のべ）（新規0、外来57、入院13）」のような“修飾（のべ）＋内訳（…）”でも、
+//   内訳＝「top-level『、』を2個以上含む最後の（）グループ」だけを箇条書き化し、修飾は見出しに残す。
+// 例 契約者数（医療7名(内自院2)、介護56名(内自院43)）→ 契約者数／・医療7名（内自院2）／・介護56名（内自院43）
 function fmtMetricName(name){
-  const m=String(name).match(/^(.+?)（(.+)）\s*$/);
-  if(m){
-    let depth=0, buf='', parts=[];
-    for(const ch of m[2]){
-      if(ch==='('||ch==='（') depth++;
-      else if(ch===')'||ch==='）') depth--;
-      if(ch==='、' && depth===0){ parts.push(buf); buf=''; } else buf+=ch;
+  const s=String(name);
+  const groups=[]; let depth=0, start=-1;                 // top-levelの全角（）グループ範囲を列挙
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(ch==='（'){ if(depth===0) start=i; depth++; }
+    else if(ch==='）'){ if(depth>0){ depth--; if(depth===0) groups.push([start,i]); } }
+  }
+  let bg=null;                                            // 内訳＝top-level「、」で2個以上に割れる最後の（）
+  for(const [a,b] of groups){
+    let d=0, buf='', parts=[];
+    for(const ch of s.slice(a+1,b)){
+      if(ch==='('||ch==='（') d++; else if(ch===')'||ch==='）') d--;
+      if(ch==='、' && d===0){ parts.push(buf); buf=''; } else buf+=ch;
     }
     parts.push(buf);
-    if(parts.length>=2){   // 複数項目を内包＝多行化（単一注記はそのまま）
-      const subs=parts.map(p=>`<span style="display:block;padding-left:1.1em;font-size:.9em;color:#555;font-weight:400">${p.trim().replace(/\(/g,'（').replace(/\)/g,'）')}</span>`).join('');
-      return `${m[1]}${subs}`;
-    }
+    if(parts.length>=2) bg={a,b,parts};
   }
-  return String(name);
+  if(!bg) return s;                                       // 内訳なし＝そのまま
+  const head=(s.slice(0,bg.a)+s.slice(bg.b+1)).trim();    // 内訳以外＝見出し（修飾 のべ/前月計 は残す）
+  const subs=bg.parts.map(p=>{
+    const txt=p.trim().replace(/\(/g,'（').replace(/\)/g,'）')
+                      .replace(/(\d+(?:[\/.]\d+)?)/g,'<b style="color:#333">$1</b>');  // 数値を強調
+    return `<span style="display:block;padding-left:1.2em;font-size:.86em;color:#777;line-height:1.5;text-indent:-.7em">・${txt}</span>`;
+  }).join('');
+  return `<span>${head}</span>${subs}`;
 }
 // 複数折れ線グラフが単系列ダッシュボードを代替する部署（単系列は出さない）
 // ※透析は2026-05-25に全体/本館/センターの単系列3枚(棒+3か月平均)へ移行＝抑制しない
@@ -126,9 +138,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525u')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525u')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525u')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260525v')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260525v')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260525v')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   let latest=''; for(const g of GIDX){ if(g.o.series&&g.o.series.length){ latest=g.o.series[g.o.series.length-1][0]; break; } }
   document.getElementById('week-label').textContent='最新: '+latest;
