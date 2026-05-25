@@ -46,6 +46,13 @@ function cellKey(f,d){ return f+'||'+d; }
 function deptData(f,d){ const s=loadStore(); return s[cellKey(f,d)]||{values:{},dates:{}}; }
 function setDeptData(f,d,obj){ const s=loadStore(); s[cellKey(f,d)]=obj; saveStore(s); }
 function deptHasInput(f,d){ const dd=deptData(f,d); return Object.values(dd.values||{}).some(v=>v!=='' && v!=null) || Object.values(dd.dates||{}).some(a=>a&&a.length); }
+// 週次(必須)の項目に空欄が残っているか＝「完了」にしてはいけない判定。月次/datelist/自動は必須から除外。
+function hasEmptyRequired(f,d){
+  const v=(deptData(f,d).values)||{};
+  return (SCHEMA[f][d]||[]).some(it=> it.mode==='input' && it.type!=='datelist'
+      && !(it['周期']==='月次' || it['区分']==='前月末')
+      && (v[it['項目']]===undefined || v[it['項目']]===null || v[it['項目']]===''));
+}
 /* ---- 提出済み記録（週ごと・サーバー提出した部署を覚えて可視化）---- */
 function subKey(){ return 'irakai:sub:'+curWeek(); }
 function loadSub(){ try{ return JSON.parse(localStorage.getItem(subKey()))||{}; }catch(e){ return {}; } }
@@ -96,8 +103,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zw')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zw')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260525zx')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260525zx')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
@@ -140,8 +147,9 @@ function buildDeptTabs(){
   Object.keys(SCHEMA[curFac]).forEach(d=>{
     const b=document.createElement('button');
     b.textContent=shortLabel(d);                                       // 状態はテキストでなく色で示す（ヘッダーを横長にしない）
-    if(isSubmitted(curFac,d)) b.classList.add('submitted');            // 提出済＝緑
-    else if(deptHasInput(curFac,d)) b.classList.add('has-input');      // 入力中＝薄黄
+    const incomplete=hasEmptyRequired(curFac,d);                       // 週次の空欄が残っている＝完了ではない
+    if(isSubmitted(curFac,d) && !incomplete) b.classList.add('submitted');         // 完了＝緑（提出済かつ週次空欄ゼロ）
+    else if(isSubmitted(curFac,d) || deptHasInput(curFac,d)) b.classList.add('has-input');  // 未入力あり/入力中＝薄黄
     b.dataset.dept=d;
     b.onclick=()=>selDept(d); dt.appendChild(b);
     if(d===curDept) b.classList.add('active');
