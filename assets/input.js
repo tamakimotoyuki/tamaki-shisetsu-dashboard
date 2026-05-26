@@ -198,10 +198,13 @@ function renderForm(){
   const form=document.getElementById('form'); form.innerHTML='';
   const inputs=items.filter(x=>x.mode==='input'), notInputs=items.filter(x=>x.mode!=='input');
 
+  // 提出済みバッジ（消えない・戻ってきても「送信できているか」が一目で分かる）
+  const subnote=document.createElement('div'); subnote.id='submitted-note'; form.appendChild(subnote);
   // 不足バナー（この部署で未入力の必須項目を目立たせる）
   const banner=document.createElement('div'); banner.id='miss-banner'; form.appendChild(banner);
 
   const h1=document.createElement('div'); h1.className='sec-h'; h1.textContent='① 入力が必要な項目（先週1週間の実数）'; form.appendChild(h1);
+  updateSubmittedNote();
   if(!inputs.length){ const p=document.createElement('div'); p.style.cssText='color:#889;font-size:13px;padding:6px'; p.textContent='（この部署は手入力項目がありません）'; form.appendChild(p); }
   const isMonthly=(it)=> it['周期']==='月次' || it['区分']==='前月末';  // 周期(新)優先・旧区分も後方互換
   const renderInputRow=(it)=>{
@@ -261,6 +264,17 @@ function renderForm(){
   });
   updateMissingBanner();
   refreshAutoValues();
+}
+// 提出済みバッジ：この部署をサーバー送信済みなら「いつ送ったか」を消えない表示で出す（戻ってきても確認できる）
+function updateSubmittedNote(){
+  const el=document.getElementById('submitted-note'); if(!el) return;
+  const ts=loadSub()[cellKey(curFac,curDept)];
+  if(ts){
+    el.className='submitted-note';
+    el.innerHTML=`✅ この部署は提出済みです（${String(ts).replace('T',' ')} に送信）。<br>内容を直して「この部署を提出」を押すと上書きされます。別の部署を選ぶと空欄に見えますが、この部署のデータは保存されています。`;
+  }else{
+    el.className=''; el.innerHTML='';
+  }
 }
 // この部署の未入力の必須項目を、フォーム先頭に目立つバナーで表示（入力に応じてリアルタイム更新）
 function updateMissingBanner(){
@@ -379,7 +393,7 @@ async function sendToServer(){
   try{
     const r=await fetch(SAVE_ENDPOINT,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
     const j=await r.json().catch(()=>({}));
-    if(j.ok){ markSubmitted(curFac,curDept); buildDeptTabs(); updateMissingBanner(); flash(`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`); }
+    if(j.ok){ markSubmitted(curFac,curDept); buildDeptTabs(); updateMissingBanner(); updateSubmittedNote(); flash(`提出しました（${shortLabel(curDept)}・${j.rows||0}行）`); }
     else { flash('提出に失敗しました'); alert('提出に失敗しました。もう一度「この部署を提出」を押してください。\n入力した数値は保持されています。'); }
   }catch(e){ flash('送信エラー'); alert('送信に失敗しました（ネットワークをご確認ください）。もう一度提出してください。\n入力した数値は保持されています。'); }
   finally{ setBusy(false); }
