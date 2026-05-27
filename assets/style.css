@@ -158,25 +158,27 @@ tbody tr.sel{background:#e3f0ff;}
   th,td{padding:6px 4px;}
 }
 
-/* ── 配布資料（印刷／PDF・A4縦4枚）──────────────────────────────── */
-#print-root{display:none;}                       /* 画面では非表示。印刷時のみ表示 */
-.print-page{page-break-after:always;color:#000;font-size:8.2pt;line-height:1.25;}
-.print-page:last-child{page-break-after:auto;}
-.pp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--blue);padding-bottom:2px;margin-bottom:5px;}
+/* ── 配布資料（印刷／PDF・A4縦・1施設1ページ）──────────────────────── */
+#print-root{display:none;color:#000;font-size:8.2pt;line-height:1.25;}   /* 画面では非表示。印刷時のみ表示 */
+.pp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--blue);padding-bottom:2px;margin:0 0 5px;}
+.pp-head.brk{break-before:page;page-break-before:always;}               /* グループ先頭で改ページ */
 .pp-title{font-weight:700;color:var(--blue);font-size:10pt;}
 .pp-week{font-size:8.5pt;color:#333;}
-.pp-no{font-size:8.5pt;color:#666;}
 .pfac{break-inside:avoid;margin:0 0 7px;}
+.pfac.big{break-inside:auto;}                                           /* 病院級は途中改ページ許可＝空白ページを作らない */
 .pfac.cols3{column-count:3;column-gap:5mm;}
 .pfac.cols2{column-count:2;column-gap:5mm;}
-.pfac-h{column-span:all;-webkit-column-span:all;font-weight:700;background:var(--blue);color:#fff;padding:1px 6px;margin-bottom:3px;font-size:9.5pt;border-radius:2px;}
+/* 施設見出しは「青文字＋左青帯＋淡い背景」＝背景印刷OFFでも必ず見える（白抜きは消えるので不可） */
+.pfac-h{column-span:all;-webkit-column-span:all;font-weight:700;color:var(--blue);background:#eaf2fb;border-left:4px solid var(--blue);padding:1px 6px;margin-bottom:3px;font-size:10pt;border-radius:2px;}
 .pdept{break-inside:avoid;margin-bottom:4px;}
 .pdept-h{font-weight:700;color:var(--blue);border-bottom:1px solid var(--green);margin-bottom:1px;font-size:8pt;}
-.prow{display:flex;justify-content:space-between;gap:5px;border-bottom:1px dotted #d3d3d3;padding:0.3px 0;}
+.prow{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;border-bottom:1px dotted #d3d3d3;padding:0.4px 0;}
 .pn{flex:1 1 auto;overflow:hidden;}
+.pk{display:block;font-size:6.8pt;color:#888;font-weight:400;line-height:1.15;}  /* 基準値（施設基準のしきい値）*/
 .pv{flex:0 0 auto;font-weight:700;white-space:nowrap;}
 @media print{
   @page{size:A4 portrait;margin:7mm;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}          /* 背景印刷OFFでも色を維持 */
   #login,#dash{display:none !important;}
   #print-root{display:block !important;}
   a[href]:after{content:none !important;}

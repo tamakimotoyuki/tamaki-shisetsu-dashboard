@@ -162,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528b')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528b')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528b')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528c')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528c')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528c')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -463,24 +463,26 @@ function printName(it){
 }
 function printItemRow(it){
   const v=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
-  return `<div class="prow"><span class="pn">${printName(it)}</span><span class="pv">${v}</span></div>`;
+  const k=(it['基準']!=null&&it['基準']!=='')?`<span class="pk">基準: ${it['基準']}</span>`:'';
+  return `<div class="prow"><span class="pn">${printName(it)}${k}</span><span class="pv">${v}</span></div>`;
 }
 function printHandout(){
   if(!HAIFU){ alert('データ読込前です。少し待って再度押してください。'); return; }
   const week=(document.getElementById('week-label').textContent||'').replace('最新: ','');
   const root=document.getElementById('print-root'); root.innerHTML='';
+  // 連続フロー＋ページグループ先頭で改ページ（空白ページを作らない）。
   PRINT_PAGES.forEach((facs,pi)=>{
-    const page=document.createElement('section'); page.className='print-page';
-    const hd=document.createElement('div'); hd.className='pp-head';
-    hd.innerHTML=`<span class="pp-title">全体会議 配布資料</span>`
-      +`<span class="pp-week">最新: ${week}</span>`
-      +`<span class="pp-no">${pi+1} / ${PRINT_PAGES.length}</span>`;
-    page.appendChild(hd);
+    const hd=document.createElement('div');
+    hd.className='pp-head'+(pi>0?' brk':'');   // 2グループ目以降は改ページして見出しから始める
+    hd.innerHTML=`<span class="pp-title">全体会議 配布資料</span><span class="pp-week">最新: ${week}</span>`;
+    root.appendChild(hd);
     facs.forEach(hint=>{
       const fac=resolveFac(hint); if(!fac||!HAIFU[fac]) return;
-      const single=(facs.length===1);
-      const block=document.createElement('div'); block.className='pfac '+(single?'cols3':'cols2');
       const depKeys=Object.keys(HAIFU[fac]);
+      const total=depKeys.reduce((a,d)=>a+(HAIFU[fac][d]||[]).length,0);
+      const big=total>80;                       // 病院級は1ページに収まらない→途中改ページ許可（空白ページ回避）
+      const block=document.createElement('div');
+      block.className='pfac '+(big?'big cols3':'cols2');
       const multi=depKeys.length>1;
       let html=`<div class="pfac-h">${shortLabel(fac)}</div>`;
       depKeys.forEach(dep=>{
@@ -491,9 +493,8 @@ function printHandout(){
           +`</div>`;
       });
       block.innerHTML=html;
-      page.appendChild(block);
+      root.appendChild(block);
     });
-    root.appendChild(page);
   });
   window.print();   // ブラウザの印刷ダイアログ→「PDFに保存」でA4縦のPDFが得られる
 }
