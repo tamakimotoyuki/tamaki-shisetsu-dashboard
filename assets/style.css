@@ -158,24 +158,25 @@ tbody tr.sel{background:#e3f0ff;}
   th,td{padding:6px 4px;}
 }
 
-/* ── 配布資料（印刷／PDF・A4縦・1施設1ページ）──────────────────────── */
-#print-root{display:none;color:#000;font-size:8.2pt;line-height:1.25;}   /* 画面では非表示。印刷時のみ表示 */
+/* ── 配布資料（印刷／PDF・A4縦）──────────────────────────────────── */
+#print-root{display:none;color:#000;font-size:7.6pt;line-height:1.22;}   /* 画面では非表示。印刷時のみ表示 */
 .pp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--blue);padding-bottom:2px;margin:0 0 5px;}
 .pp-head.brk{break-before:page;page-break-before:always;}               /* グループ先頭で改ページ */
 .pp-title{font-weight:700;color:var(--blue);font-size:10pt;}
 .pp-week{font-size:8.5pt;color:#333;}
-.pfac{break-inside:avoid;margin:0 0 7px;}
+.pfac{break-inside:avoid;margin:0 0 6px;}
 .pfac.big{break-inside:auto;}                                           /* 病院級は途中改ページ許可＝空白ページを作らない */
 .pfac.cols3{column-count:3;column-gap:5mm;}
 .pfac.cols2{column-count:2;column-gap:5mm;}
 /* 施設見出しは「青文字＋左青帯＋淡い背景」＝背景印刷OFFでも必ず見える（白抜きは消えるので不可） */
-.pfac-h{column-span:all;-webkit-column-span:all;font-weight:700;color:var(--blue);background:#eaf2fb;border-left:4px solid var(--blue);padding:1px 6px;margin-bottom:3px;font-size:10pt;border-radius:2px;}
+.pfac-h{column-span:all;-webkit-column-span:all;font-weight:700;color:var(--blue);background:#eaf2fb;border-left:4px solid var(--blue);padding:1px 6px;margin-bottom:3px;font-size:9.5pt;border-radius:2px;}
 .pdept{break-inside:avoid;margin-bottom:4px;}
-.pdept-h{font-weight:700;color:var(--blue);border-bottom:1px solid var(--green);margin-bottom:1px;font-size:8pt;}
-.prow{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;border-bottom:1px dotted #d3d3d3;padding:0.4px 0;}
-.pn{flex:1 1 auto;overflow:hidden;}
-.pk{display:block;font-size:6.8pt;color:#888;font-weight:400;line-height:1.15;}  /* 基準値（施設基準のしきい値）*/
-.pv{flex:0 0 auto;font-weight:700;white-space:nowrap;}
+.pdept-h{font-weight:700;color:var(--blue);border-bottom:1px solid var(--green);margin-bottom:1px;font-size:7.8pt;}
+/* 2列グリッド：名前(左・可変)｜値(右ぞろえ・幅自動＝同一部署内で数字が縦に揃う) */
+.pgrid{display:grid;grid-template-columns:1fr auto;column-gap:6px;}
+.pn{overflow:hidden;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
+.pv{text-align:right;font-weight:700;white-space:nowrap;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
+.pk{display:block;font-size:6.6pt;color:#888;font-weight:400;line-height:1.12;}  /* 基準値（施設基準のしきい値）*/
 @media print{
   @page{size:A4 portrait;margin:7mm;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}          /* 背景印刷OFFでも色を維持 */
