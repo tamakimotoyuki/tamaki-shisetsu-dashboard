@@ -162,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528h')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528h')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528h')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528i')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528i')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528i')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -444,9 +444,10 @@ function buildKenshinYear(cv, series, mode){
 // 1施設は1ページ内（途中改ページしない＝.pfac に break-inside:avoid）。性格の近い施設を4ページに集約。
 // 仮割付（田蒔さん2026-05-28）：P1=病院単独 / P2=藍住+ハート / P3=入所・居住系 / P4=在宅・通所系。
 const PRINT_PAGES=[
-  ['たまき青空病院','藍住 たまき青空クリニック','ハート徳島クリニック'],   // 2ページに連続で流す
-  ['老健フェニックス','特養あおぞら','GHフェニックス','GHふれあい'],
-  ['阿波っ子','たまき青空 居宅支援','藍住たまき青空 居宅支援','たまき青空 訪問看護','訪問診療']
+  ['たまき青空病院','藍住 たまき青空クリニック','ハート徳島クリニック'],   // 病院群（2ページに連続で流す）
+  // 介護入所系＋在宅通所系を1ページに集約（旧4・5ページは余白が多く1枚に収まる）
+  ['老健フェニックス','特養あおぞら','GHフェニックス','GHふれあい',
+   '阿波っ子','たまき青空 居宅支援','藍住たまき青空 居宅支援','たまき青空 訪問看護','訪問診療']
 ];
 // 指定ヒントを HAIFU の実キーに正規化マッチ（別法人ハート等の長い括弧名を吸収）
 function resolveFac(hint){
