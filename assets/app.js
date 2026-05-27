@@ -9,6 +9,7 @@ async function boot(){
   AUTH=await (await fetch('data/auth.json')).json();
   document.getElementById('login-form').addEventListener('submit', onLogin);
   document.getElementById('logout').addEventListener('click', ()=>{ sessionStorage.removeItem('ok'); show('login'); });
+  document.getElementById('print-btn').addEventListener('click', printHandout);
   if(sessionStorage.getItem('ok')==='1') await enter();
 }
 async function onLogin(e){
@@ -161,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528a')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528a')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528a')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528b')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528b')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528b')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -438,4 +439,63 @@ function buildKenshinYear(cv, series, mode){
       plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:12,font:{size:10}}}},
       scales:{x:{ticks:{font:{size:10}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
 }
+
+// ── 配布資料（印刷／PDF・A4縦4枚）────────────────────────────────────────
+// 1施設は1ページ内（途中改ページしない＝.pfac に break-inside:avoid）。性格の近い施設を4ページに集約。
+// 仮割付（田蒔さん2026-05-28）：P1=病院単独 / P2=藍住+ハート / P3=入所・居住系 / P4=在宅・通所系。
+const PRINT_PAGES=[
+  ['たまき青空病院'],
+  ['藍住 たまき青空クリニック','ハート徳島クリニック'],
+  ['老健フェニックス','特養あおぞら','GHフェニックス','GHふれあい'],
+  ['阿波っ子','たまき青空 居宅支援','藍住たまき青空 居宅支援','たまき青空 訪問看護','訪問診療']
+];
+// 指定ヒントを HAIFU の実キーに正規化マッチ（別法人ハート等の長い括弧名を吸収）
+function resolveFac(hint){
+  if(HAIFU[hint]) return hint;
+  const nh=normFac(hint);
+  return Object.keys(HAIFU).find(k=>normFac(k)===nh)            // 完全一致（正規化）
+      || Object.keys(HAIFU).find(k=>normFac(k).startsWith(nh))  // 前方一致（ハート徳島→ハート徳島クリニック等）
+      || null;
+}
+// 印刷では項目名から数字入り注記カッコ（内訳・計算式）を落として簡潔に。値は別途表示。
+function printName(it){
+  return String(it['項目']||'').replace(/（[^）]*\d[^）]*）/g,'').replace(/\([^)]*\d[^)]*\)/g,'').trim() || it['項目'];
+}
+function printItemRow(it){
+  const v=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
+  return `<div class="prow"><span class="pn">${printName(it)}</span><span class="pv">${v}</span></div>`;
+}
+function printHandout(){
+  if(!HAIFU){ alert('データ読込前です。少し待って再度押してください。'); return; }
+  const week=(document.getElementById('week-label').textContent||'').replace('最新: ','');
+  const root=document.getElementById('print-root'); root.innerHTML='';
+  PRINT_PAGES.forEach((facs,pi)=>{
+    const page=document.createElement('section'); page.className='print-page';
+    const hd=document.createElement('div'); hd.className='pp-head';
+    hd.innerHTML=`<span class="pp-title">全体会議 配布資料</span>`
+      +`<span class="pp-week">最新: ${week}</span>`
+      +`<span class="pp-no">${pi+1} / ${PRINT_PAGES.length}</span>`;
+    page.appendChild(hd);
+    facs.forEach(hint=>{
+      const fac=resolveFac(hint); if(!fac||!HAIFU[fac]) return;
+      const single=(facs.length===1);
+      const block=document.createElement('div'); block.className='pfac '+(single?'cols3':'cols2');
+      const depKeys=Object.keys(HAIFU[fac]);
+      const multi=depKeys.length>1;
+      let html=`<div class="pfac-h">${shortLabel(fac)}</div>`;
+      depKeys.forEach(dep=>{
+        const items=(HAIFU[fac][dep]||[]); if(!items.length) return;
+        html+=`<div class="pdept">`
+          +(multi?`<div class="pdept-h">${shortLabel(dep)}</div>`:'')
+          +items.map(printItemRow).join('')
+          +`</div>`;
+      });
+      block.innerHTML=html;
+      page.appendChild(block);
+    });
+    root.appendChild(page);
+  });
+  window.print();   // ブラウザの印刷ダイアログ→「PDFに保存」でA4縦のPDFが得られる
+}
+
 boot();

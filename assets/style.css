@@ -22,7 +22,9 @@ body{margin:0;font-family:"Meiryo","Yu Gothic",sans-serif;color:#223;background:
 .topbar{display:flex;align-items:center;gap:14px;background:var(--blue);color:#fff;padding:10px 16px;}
 .brand{font-weight:bold;}
 .week{font-size:13px;opacity:.9;}
-.topbar .link{margin-left:auto;background:none;border:1px solid #fff8;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;}
+.topbar .link{background:none;border:1px solid #fff8;color:#fff;border-radius:6px;padding:5px 10px;cursor:pointer;}
+.topbar #print-btn{margin-left:auto;}          /* 印刷～ログアウトを右側にまとめる */
+.topbar #logout{margin-left:8px;}              /* 印刷の右隣にログアウト */
 .tabs{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap;}
 .tabs button{border:1px solid var(--line);background:#fff;padding:7px 14px;border-radius:8px 8px 0 0;cursor:pointer;font-size:14px;}
 .tabs button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
@@ -154,4 +156,28 @@ tbody tr.sel{background:#e3f0ff;}
   .chartbox{height:260px;}
   .split{padding:10px;}
   th,td{padding:6px 4px;}
+}
+
+/* ── 配布資料（印刷／PDF・A4縦4枚）──────────────────────────────── */
+#print-root{display:none;}                       /* 画面では非表示。印刷時のみ表示 */
+.print-page{page-break-after:always;color:#000;font-size:8.2pt;line-height:1.25;}
+.print-page:last-child{page-break-after:auto;}
+.pp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--blue);padding-bottom:2px;margin-bottom:5px;}
+.pp-title{font-weight:700;color:var(--blue);font-size:10pt;}
+.pp-week{font-size:8.5pt;color:#333;}
+.pp-no{font-size:8.5pt;color:#666;}
+.pfac{break-inside:avoid;margin:0 0 7px;}
+.pfac.cols3{column-count:3;column-gap:5mm;}
+.pfac.cols2{column-count:2;column-gap:5mm;}
+.pfac-h{column-span:all;-webkit-column-span:all;font-weight:700;background:var(--blue);color:#fff;padding:1px 6px;margin-bottom:3px;font-size:9.5pt;border-radius:2px;}
+.pdept{break-inside:avoid;margin-bottom:4px;}
+.pdept-h{font-weight:700;color:var(--blue);border-bottom:1px solid var(--green);margin-bottom:1px;font-size:8pt;}
+.prow{display:flex;justify-content:space-between;gap:5px;border-bottom:1px dotted #d3d3d3;padding:0.3px 0;}
+.pn{flex:1 1 auto;overflow:hidden;}
+.pv{flex:0 0 auto;font-weight:700;white-space:nowrap;}
+@media print{
+  @page{size:A4 portrait;margin:7mm;}
+  #login,#dash{display:none !important;}
+  #print-root{display:block !important;}
+  a[href]:after{content:none !important;}
 }

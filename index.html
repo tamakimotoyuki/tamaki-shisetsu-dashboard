@@ -9,7 +9,7 @@
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-<link rel="stylesheet" href="assets/style.css?v=20260528a">
+<link rel="stylesheet" href="assets/style.css?v=20260528b">
 </head>
 <body>
 
@@ -32,6 +32,7 @@
       <img class="topbar-logo" src="assets/logo.png" alt="たまき青空病院グループ">
       <span class="brand">全体会議資料</span>
       <span id="week-label" class="week"></span>
+      <button id="print-btn" class="link" title="A4縦の配布資料を印刷／PDF保存">🖨 印刷</button>
       <button id="logout" class="link">ログアウト</button>
     </header>
     <nav id="fac-tabs" class="tabs"></nav>
@@ -56,7 +57,10 @@
   </footer>
 </section>
 
+<!-- 配布資料（印刷／PDF用・A4縦4枚・通常は非表示、印刷時のみ表示） -->
+<div id="print-root" aria-hidden="true"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="assets/app.js?v=20260528a"></script>
+<script src="assets/app.js?v=20260528b"></script>
 </body>
 </html>
