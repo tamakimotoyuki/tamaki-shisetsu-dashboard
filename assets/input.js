@@ -57,7 +57,8 @@ function hasEmptyRequired(f,d){
 function subKey(){ return 'irakai:sub:'+curWeek(); }
 function loadSub(){ try{ return JSON.parse(localStorage.getItem(subKey()))||{}; }catch(e){ return {}; } }
 function isSubmitted(f,d){ return !!loadSub()[cellKey(f,d)]; }
-function markSubmitted(f,d){ const s=loadSub(); s[cellKey(f,d)]=new Date().toISOString().slice(0,16); localStorage.setItem(subKey(), JSON.stringify(s)); }
+// 提出時刻はJST（Asia/Tokyo）で記録。toISOString()はUTCで9時間ずれるため使わない。
+function markSubmitted(f,d){ const s=loadSub(); s[cellKey(f,d)]=new Date().toLocaleString('sv-SE',{timeZone:'Asia/Tokyo'}).slice(0,16); localStorage.setItem(subKey(), JSON.stringify(s)); }
 
 /* ---- サーバー受領値の読み戻し（#4）：その週の受領値＋看取り等の直近1年日付を取得し、
    空欄のみプレ表示する（自分の既入力は上書きしない）。看取り日付は前週からの引き継ぎになる。 ---- */
