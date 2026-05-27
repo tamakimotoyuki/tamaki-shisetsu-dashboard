@@ -158,8 +158,9 @@ tbody tr.sel{background:#e3f0ff;}
   th,td{padding:6px 4px;}
 }
 
-/* ── 配布資料（印刷／PDF・A4縦）──────────────────────────────────── */
-#print-root{display:none;color:#000;font-size:7.6pt;line-height:1.22;}   /* 画面では非表示。印刷時のみ表示 */
+/* ── 配布資料（印刷／PDF・A4縦・左右2列）──────────────────────────── */
+/* 方針：ページ数より見やすさ優先（田蒔さん2026-05-28）。全施設2列・字は読める大きさに。 */
+#print-root{display:none;color:#000;font-size:8.6pt;line-height:1.32;}   /* 画面では非表示。印刷時のみ表示 */
 .pp-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--blue);padding-bottom:2px;margin:0 0 5px;}
 .pp-head.brk{break-before:page;page-break-before:always;}               /* グループ先頭で改ページ */
 .pp-title{font-weight:700;color:var(--blue);font-size:10pt;}
@@ -176,7 +177,7 @@ tbody tr.sel{background:#e3f0ff;}
 .pgrid{display:grid;grid-template-columns:1fr auto;column-gap:6px;}
 .pn{overflow:hidden;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
 .pv{text-align:right;font-weight:700;white-space:nowrap;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
-.pk{display:block;font-size:6.6pt;color:#888;font-weight:400;line-height:1.12;}  /* 基準値（施設基準のしきい値）*/
+.pk{display:block;font-size:7.2pt;color:#777;font-weight:400;line-height:1.18;}  /* 基準値（施設基準のしきい値）*/
 @media print{
   @page{size:A4 portrait;margin:7mm;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}          /* 背景印刷OFFでも色を維持 */

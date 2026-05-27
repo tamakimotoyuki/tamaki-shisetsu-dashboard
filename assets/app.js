@@ -162,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528d')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528d')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528d')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528e')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528e')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528e')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -482,7 +482,7 @@ function printHandout(){
       const total=depKeys.reduce((a,d)=>a+(HAIFU[fac][d]||[]).length,0);
       const big=total>80;                       // 病院級は1ページに収まらない→途中改ページ許可（空白ページ回避）
       const block=document.createElement('div');
-      block.className='pfac '+(big?'big cols3':'cols2');
+      block.className='pfac cols2'+(big?' big':'');   // 全施設「左右2列」固定（3列は列が狭く名前が縦割れする＝不可）
       const multi=depKeys.length>1;
       let html=`<div class="pfac-h">${shortLabel(fac)}</div>`;
       depKeys.forEach(dep=>{
