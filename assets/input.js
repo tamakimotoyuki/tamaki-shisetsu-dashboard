@@ -106,8 +106,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260528g')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260528g')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260528h')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260528h')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';

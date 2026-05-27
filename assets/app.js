@@ -162,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528g')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528g')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528g')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528h')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528h')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528h')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -460,11 +460,21 @@ function resolveFac(hint){
 function printName(it){
   return String(it['項目']||'').replace(/（[^）]*\d[^）]*）/g,'').replace(/\([^)]*\d[^)]*\)/g,'').trim() || it['項目'];
 }
+// 区分→印刷の小見出し（内訳ブロックを分ける）。手術=先週/今週、透析=本館/センター。
+const PRINT_SUBHEAD={'先週の手術':'先週の手術','今週の手術予定':'今週の手術予定','本館透析室':'本館','センター透析室':'センター'};
 // 部署ごとに2列グリッド（名前｜値）で出力。値は右ぞろえの1列に揃うので数字が縦に並んで読みやすい。
 function printItemRow(it){
-  const v=(it['値表示']??'-')+(it['単位']?' '+it['単位']:'');
+  const nm=printName(it);
   const k=(it['基準']!=null&&it['基準']!=='')?`<span class="pk">基準: ${it['基準']}</span>`:'';
-  return `<div class="pn">${printName(it)}${k}</div><div class="pv">${v}</div>`;
+  // 備考・注記＝自由文。2列に押し込むと崩れる→全幅で折り返す。
+  if(it['注記']===true || it['項目']==='備考'){
+    const t=String(it['値表示']??'').trim();
+    return `<div class="pnote">${nm}${(t&&t!=='—')?'：'+t:''}</div>`;
+  }
+  const u=(it['単位']&&it['単位']!=='—')?' '+it['単位']:'';
+  const v=(it['値表示']??'-')+u;
+  const tot=/^合計/.test(nm)?' total':'';     // 合計行は上罫線＋太字で内訳と区切る
+  return `<div class="pn${tot}">${nm}${k}</div><div class="pv${tot}">${v}</div>`;
 }
 function printHandout(){
   if(!HAIFU){ alert('データ読込前です。少し待って再度押してください。'); return; }
@@ -487,10 +497,16 @@ function printHandout(){
       let html=`<div class="pfac-h">${shortLabel(fac)}</div>`;
       depKeys.forEach(dep=>{
         const items=(HAIFU[fac][dep]||[]); if(!items.length) return;
-        html+=`<div class="pdept">`
-          +(multi?`<div class="pdept-h">${shortLabel(dep)}</div>`:'')
-          +`<div class="pgrid">`+items.map(printItemRow).join('')+`</div>`
-          +`</div>`;
+        // 区分の小見出しで内訳ブロックを分ける（手術=先週/今週、透析=本館/センター）。内訳はインデント。
+        let inner='', buf='', curSub=null;
+        const flush=()=>{ if(buf){ if(curSub) inner+=`<div class="psub">${curSub}</div>`; inner+=`<div class="pgrid${curSub?' sub':''}">${buf}</div>`; buf=''; } };
+        items.forEach(it=>{
+          const sub=PRINT_SUBHEAD[it['区分']]||null;
+          if(sub!==curSub){ flush(); curSub=sub; }
+          buf+=printItemRow(it);
+        });
+        flush();
+        html+=`<div class="pdept">`+(multi?`<div class="pdept-h">${shortLabel(dep)}</div>`:'')+inner+`</div>`;
       });
       block.innerHTML=html;
       grp.appendChild(block);

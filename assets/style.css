@@ -174,9 +174,13 @@ tbody tr.sel{background:#e3f0ff;}
 .pdept-h{font-weight:700;color:var(--blue);border-bottom:1px solid var(--green);margin-bottom:1px;font-size:7.8pt;}
 /* 2列グリッド：名前(左・可変)｜値(右ぞろえ・幅自動＝同一部署内で数字が縦に揃う) */
 .pgrid{display:grid;grid-template-columns:1fr auto;column-gap:6px;}
-.pn{overflow:hidden;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
+.pn{overflow:hidden;border-bottom:1px dotted #d8d8d8;padding:0.5px 0 0.5px 0.7em;}   /* 項目は部署見出しから少し字下げ */
+.pgrid.sub .pn{padding-left:1.6em;}                                                   /* 内訳（手術 先週/今週・透析 本館/センター）はさらに字下げ */
 .pv{text-align:right;font-weight:700;white-space:nowrap;border-bottom:1px dotted #d8d8d8;padding:0.5px 0;}
 .pk{display:block;font-size:7.2pt;color:#777;font-weight:400;line-height:1.18;}  /* 基準値（施設基準のしきい値）*/
+.psub{font-size:7.4pt;font-weight:700;color:#666;padding:1.5px 0 0 0.2em;break-after:avoid;}  /* 区分の小見出し */
+.pnote{grid-column:1/-1;font-size:7.3pt;color:#555;white-space:normal;line-height:1.25;padding:1px 0 2px 0.2em;border-bottom:1px dotted #d8d8d8;}  /* 備考＝全幅で折り返す */
+.pn.total,.pv.total{border-top:1px solid #b9b9b9;font-weight:700;}                     /* 合計行を内訳と区切る */
 @media print{
   @page{size:A4 portrait;margin:7mm;}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}          /* 背景印刷OFFでも色を維持 */
