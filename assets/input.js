@@ -15,10 +15,8 @@ const SHORT={
   '藍住たまき青空 居宅支援':'藍住居宅支援','たまき青空 訪問看護':'訪問看護',
   '一般病棟（地域包括ケア）':'地域包括ケア','地域包括医療 (60床) ※毎月10日以降':'地域包括医療',
   'リハビリ（病院）':'リハビリ','薬剤':'薬局',
-  // 第2ヘッダー（部署タブ）の長い名前を短縮（2026-05-28）
-  'サービス付き高齢者向け住宅':'サ高住','ヘルパーステーション':'ヘルパー','ショートステイ':'ショート',
-  'デイケアあいそら':'あいそら','Access抗菌薬':'抗菌薬','リハビリ強化デイケア':'強化デイケア',
-  '医療区分・時間外・入退院支援':'医療区分ほか','美容 実メニュー':'美容'
+  // 第2ヘッダー（部署タブ）：10文字超のみ短縮（2026-05-28・10字以内はフル表示を許容）
+  'サービス付き高齢者向け住宅':'サ高住','医療区分・時間外・入退院支援':'医療区分・時間外','美容 実メニュー':'美容'
 };
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/※.*$/,'').replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
 
@@ -108,8 +106,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260527m')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260527m')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260527n')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260527n')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
