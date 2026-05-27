@@ -162,9 +162,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528e')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528e')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528e')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260528f')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260528f')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260528f')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
@@ -476,14 +476,14 @@ function printHandout(){
     hd.className='pp-head'+(pi>0?' brk':'');   // 2グループ目以降は改ページして見出しから始める
     hd.innerHTML=`<span class="pp-title">全体会議 配布資料</span><span class="pp-week">最新: ${week}</span>`;
     root.appendChild(hd);
+    const grp=document.createElement('div'); grp.className='pgroup';   // ★ページ単位の左右2列。施設/部署がこの中を流れて両列を埋める
     facs.forEach(hint=>{
       const fac=resolveFac(hint); if(!fac||!HAIFU[fac]) return;
       const depKeys=Object.keys(HAIFU[fac]);
-      const total=depKeys.reduce((a,d)=>a+(HAIFU[fac][d]||[]).length,0);
-      const big=total>80;                       // 病院級は1ページに収まらない→途中改ページ許可（空白ページ回避）
-      const block=document.createElement('div');
-      block.className='pfac cols2'+(big?' big':'');   // 全施設「左右2列」固定（3列は列が狭く名前が縦割れする＝不可）
       const multi=depKeys.length>1;
+      const block=document.createElement('div');
+      // 複数部署の施設は列・ページをまたいで流す（部署単位で塊を保つ）。単一部署の小施設は丸ごと保持。
+      block.className='pfac'+(multi?' flow':'');
       let html=`<div class="pfac-h">${shortLabel(fac)}</div>`;
       depKeys.forEach(dep=>{
         const items=(HAIFU[fac][dep]||[]); if(!items.length) return;
@@ -493,8 +493,9 @@ function printHandout(){
           +`</div>`;
       });
       block.innerHTML=html;
-      root.appendChild(block);
+      grp.appendChild(block);
     });
+    root.appendChild(grp);
   });
   window.print();   // ブラウザの印刷ダイアログ→「PDFに保存」でA4縦のPDFが得られる
 }
