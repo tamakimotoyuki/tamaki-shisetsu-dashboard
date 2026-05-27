@@ -29,7 +29,11 @@ const SHORT={
   '特養あおぞら（①②③いずれか該当）':'特養あおぞら','たまき青空 居宅支援':'居宅支援',
   '藍住たまき青空 居宅支援':'藍住居宅支援','たまき青空 訪問看護':'訪問看護',
   '一般病棟（地域包括ケア）':'地域包括ケア','地域包括医療 (60床) ※毎月10日以降':'地域包括医療',
-  'リハビリ（病院）':'リハビリ','薬剤':'薬局'
+  'リハビリ（病院）':'リハビリ','薬剤':'薬局',
+  // 第2ヘッダー（部署タブ）の長い名前を短縮（2026-05-28）
+  'サービス付き高齢者向け住宅':'サ高住','ヘルパーステーション':'ヘルパー','ショートステイ':'ショート',
+  'デイケアあいそら':'あいそら','Access抗菌薬':'抗菌薬','リハビリ強化デイケア':'強化デイケア',
+  '医療区分・時間外・入退院支援':'医療区分ほか','美容 実メニュー':'美容'
 };
 function shortLabel(s){ if(SHORT[s])return SHORT[s]; return String(s).replace(/（[^）]*）/g,'').replace(/\([^)]*\)/g,'').trim()||s; }
 // 配布資料の項目名を見やすく：内訳（「、」区切りの複数項目を含む（））を字下げの箇条書きに。
@@ -159,9 +163,9 @@ function matchGraphDept(haifuDept, graphKeys){
 }
 
 async function enter(){
-  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260527l')).json();
-  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260527l')).json())['施設']; buildGraphIndex(); }
-  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260527l')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
+  if(!HAIFU) HAIFU=await (await fetch('data/haifu.json?v=20260527m')).json();
+  if(!GRAPHS){ GRAPHS=(await (await fetch('data/dashboard.json?v=20260527m')).json())['施設']; buildGraphIndex(); }
+  if(!MULTILINE){ try{ MULTILINE=(await (await fetch('data/multiline_series.json?v=20260527m')).json())['施設']||{}; }catch(e){ MULTILINE={}; } }
   show('dash');
   // 最新ラベル＝全グラフ系列の末尾ラベルのうち最大の週次日付(YYYY/MM/DD)。最初の1本ではなく全体の最大を見る。
   let latest=''; for(const g of GIDX){ const s=g.o&&g.o.series; if(s&&s.length){ const l=String(s[s.length-1][0]); if(/^\d{4}\/\d{2}\/\d{2}$/.test(l) && l>latest) latest=l; } }
