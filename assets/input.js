@@ -106,8 +106,8 @@ async function boot(){
   await enter();
 }
 async function enter(){
-  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260528k')).json();
-  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260528k')).json(); }catch(e){ RANGES={}; }
+  if(!SCHEMA) SCHEMA=await (await fetch('data/input_schema.json?v=20260528l')).json();
+  try{ RANGES=await (await fetch('data/input_ranges.json?v=20260528l')).json(); }catch(e){ RANGES={}; }
   show('app');
   applyReceived(await fetchReceived(curWeek()));  // サーバー受領値を空欄にプレ表示（看取り日付は前週引き継ぎ）
   const ft=document.getElementById('fac-tabs'); ft.innerHTML='';
@@ -151,8 +151,11 @@ function buildDeptTabs(){
     const b=document.createElement('button');
     b.textContent=shortLabel(d);                                       // 状態はテキストでなく色で示す（ヘッダーを横長にしない）
     const incomplete=hasEmptyRequired(curFac,d);                       // 週次の空欄が残っている＝完了ではない
-    if(isSubmitted(curFac,d) && !incomplete) b.classList.add('submitted');         // 完了＝緑（提出済かつ週次空欄ゼロ）
-    else if(isSubmitted(curFac,d) || deptHasInput(curFac,d)) b.classList.add('has-input');  // 未入力あり/入力中＝薄黄
+    const has=isSubmitted(curFac,d)||deptHasInput(curFac,d);          // 入力or提出orサーバー取得で値がある
+    // ★緑＝週次が全部埋まっている（完了）。サーバー取得で埋まった分も緑にする（この端末で提出した記録が無くても）。
+    //   旧仕様は緑にisSubmittedを要求したため、他端末で提出済→サーバー値で全部埋まった部署が黄色のままだった（地域包括医療の誤黄色）。
+    if(has && !incomplete) b.classList.add('submitted');              // 緑＝値が揃っている（完了）
+    else if(has) b.classList.add('has-input');                       // 黄＝入力はあるが週次に空欄が残る
     b.dataset.dept=d;
     b.onclick=()=>selDept(d); dt.appendChild(b);
     if(d===curDept) b.classList.add('active');
